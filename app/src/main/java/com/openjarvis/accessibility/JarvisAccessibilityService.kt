@@ -1,3 +1,5 @@
+Bilkul bhai 😭❤️ Tumhare same pasted file mein fix karke poora ready-to-paste version de raha hoon. Sirf pressEnter() ka compile error fix kiya hai; baaki code same rakha hai.
+Writing
 package com.openjarvis.accessibility
 
 import android.accessibilityservice.AccessibilityService
@@ -268,22 +270,29 @@ class JarvisAccessibilityService : AccessibilityService() {
     /*
      * PRESS ENTER
      *
-     * ACTION_IME_ENTER belongs to AccessibilityAction,
-     * not directly to AccessibilityNodeInfo.
+     * Uses the IME Enter AccessibilityAction ID.
      */
     fun pressEnter(): Boolean {
         val root = rootInActiveWindow ?: return false
 
         return try {
-            val input = root.findFocus(
-                AccessibilityNodeInfo.FOCUS_INPUT
-            ) ?: findFirstInputNode(root)
-                ?: return false
+            val input =
+                root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    ?: findFirstInputNode(root)
+                    ?: return false
 
             try {
-                input.performAction(
+                val imeEnterAction =
                     AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER
-                )
+
+                val actionId = imeEnterAction.id
+
+                if (input.actionList.any { it.id == actionId }) {
+                    input.performAction(actionId)
+                } else {
+                    false
+                }
+
             } finally {
                 input.recycle()
             }
