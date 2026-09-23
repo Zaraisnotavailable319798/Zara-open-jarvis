@@ -3,9 +3,15 @@ package com.openjarvis.intelligence
 data class AIAppMeta(
     val packageName: String,
     val appName: String,
+
+    // Primary hint used to locate the input field.
     val inputFieldHint: String,
+
+    // Optional send button label.
     val sendButtonText: String?,
+
     val responseExtraction: ResponseExtraction,
+
     val supportsVoiceInput: Boolean = false,
     val contextRetention: Boolean = true
 )
@@ -18,7 +24,12 @@ enum class ResponseExtraction {
 }
 
 object AIApps {
+
     val KNOWN_AI_APPS = mapOf(
+
+        // ─────────────────────────────
+        // ChatGPT
+        // ─────────────────────────────
         "com.openai.chatgpt" to AIAppMeta(
             packageName = "com.openai.chatgpt",
             appName = "ChatGPT",
@@ -28,6 +39,10 @@ object AIApps {
             supportsVoiceInput = true,
             contextRetention = true
         ),
+
+        // ─────────────────────────────
+        // Gemini
+        // ─────────────────────────────
         "com.google.android.apps.bard" to AIAppMeta(
             packageName = "com.google.android.apps.bard",
             appName = "Gemini",
@@ -37,6 +52,10 @@ object AIApps {
             supportsVoiceInput = true,
             contextRetention = true
         ),
+
+        // ─────────────────────────────
+        // Claude
+        // ─────────────────────────────
         "com.anthropic.claude" to AIAppMeta(
             packageName = "com.anthropic.claude",
             appName = "Claude",
@@ -46,6 +65,10 @@ object AIApps {
             supportsVoiceInput = true,
             contextRetention = true
         ),
+
+        // ─────────────────────────────
+        // Perplexity
+        // ─────────────────────────────
         "com.perplexity.ai.client" to AIAppMeta(
             packageName = "com.perplexity.ai.client",
             appName = "Perplexity",
@@ -55,6 +78,10 @@ object AIApps {
             supportsVoiceInput = false,
             contextRetention = false
         ),
+
+        // ─────────────────────────────
+        // Microsoft Copilot
+        // ─────────────────────────────
         "com.microsoft.copilot" to AIAppMeta(
             packageName = "com.microsoft.copilot",
             appName = "Microsoft Copilot",
@@ -64,6 +91,10 @@ object AIApps {
             supportsVoiceInput = true,
             contextRetention = true
         ),
+
+        // ─────────────────────────────
+        // Mistral
+        // ─────────────────────────────
         "com.mistral.al" to AIAppMeta(
             packageName = "com.mistral.al",
             appName = "Mistral",
@@ -73,6 +104,10 @@ object AIApps {
             supportsVoiceInput = false,
             contextRetention = true
         ),
+
+        // ─────────────────────────────
+        // Kakao i
+        // ─────────────────────────────
         "ai.kakao.aichat" to AIAppMeta(
             packageName = "ai.kakao.aichat",
             appName = "Kakao i",
@@ -82,6 +117,10 @@ object AIApps {
             supportsVoiceInput = true,
             contextRetention = true
         ),
+
+        // ─────────────────────────────
+        // Character AI
+        // ─────────────────────────────
         "com.characterai" to AIAppMeta(
             packageName = "com.characterai",
             appName = "Character AI",
@@ -92,7 +131,7 @@ object AIApps {
             contextRetention = true
         )
     )
-    
+
     val POPULAR_APPS = listOf(
         "com.whatsapp",
         "com.instagram.android",
