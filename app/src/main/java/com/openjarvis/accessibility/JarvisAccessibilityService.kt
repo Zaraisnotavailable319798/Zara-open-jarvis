@@ -16,7 +16,7 @@ class JarvisAccessibilityService : AccessibilityService() {
         instance = this
 
         val info = AccessibilityServiceInfo().apply {
-            eventTypes = AccessibilityEvent.TYPE_ALL_MASK
+            eventTypes = AccessibilityEvent.TYPES_ALL_MASK
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
 
             flags =
@@ -174,9 +174,6 @@ class JarvisAccessibilityService : AccessibilityService() {
 
     /*
      * TYPE TEXT
-     *
-     * Tries the currently focused input first.
-     * Then searches for an editable field.
      */
     fun typeText(text: String): Boolean {
         val root = rootInActiveWindow ?: return false
@@ -228,9 +225,6 @@ class JarvisAccessibilityService : AccessibilityService() {
 
     /*
      * TYPE INTO NODE
-     *
-     * First tries click + focus.
-     * Then attempts ACTION_SET_TEXT.
      */
     private fun typeIntoNode(
         node: AccessibilityNodeInfo,
@@ -243,10 +237,6 @@ class JarvisAccessibilityService : AccessibilityService() {
                 return false
             }
 
-            /*
-             * Some apps require the field to be clicked
-             * before it accepts focus/text.
-             */
             if (node.isClickable) {
                 node.performAction(
                     AccessibilityNodeInfo.ACTION_CLICK
@@ -269,6 +259,7 @@ class JarvisAccessibilityService : AccessibilityService() {
                 AccessibilityNodeInfo.ACTION_SET_TEXT,
                 arguments
             )
+
         } finally {
             node.recycle()
         }
@@ -276,6 +267,9 @@ class JarvisAccessibilityService : AccessibilityService() {
 
     /*
      * PRESS ENTER
+     *
+     * ACTION_IME_ENTER belongs to AccessibilityAction,
+     * not directly to AccessibilityNodeInfo.
      */
     fun pressEnter(): Boolean {
         val root = rootInActiveWindow ?: return false
@@ -283,19 +277,17 @@ class JarvisAccessibilityService : AccessibilityService() {
         return try {
             val input = root.findFocus(
                 AccessibilityNodeInfo.FOCUS_INPUT
-            )
+            ) ?: findFirstInputNode(root)
+                ?: return false
 
-            if (input != null) {
-                try {
-                    input.performAction(
-                        AccessibilityNodeInfo.ACTION_IME_ENTER
-                    )
-                } finally {
-                    input.recycle()
-                }
-            } else {
-                false
+            try {
+                input.performAction(
+                    AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER
+                )
+            } finally {
+                input.recycle()
             }
+
         } finally {
             root.recycle()
         }
@@ -315,9 +307,6 @@ class JarvisAccessibilityService : AccessibilityService() {
 
     /*
      * CLICK HELPER
-     *
-     * If the matched node itself is not clickable,
-     * walks upward to find a clickable parent.
      */
     private fun performClickOnNode(
         node: AccessibilityNodeInfo
@@ -373,12 +362,6 @@ class JarvisAccessibilityService : AccessibilityService() {
 
     /*
      * FIND TEXT / CONTENT DESCRIPTION
-     *
-     * Uses a fresh accessibility snapshot traversal.
-     *
-     * Important:
-     * We do NOT recycle nodes while they are still
-     * needed by the traversal.
      */
     private fun findNodeByTextAnywhere(
         root: AccessibilityNodeInfo,
@@ -427,13 +410,6 @@ class JarvisAccessibilityService : AccessibilityService() {
                     queue.add(child)
                 }
             }
-
-            /*
-             * Don't recycle here.
-             *
-             * The returned node and queued nodes may still
-             * be referenced during traversal.
-             */
         }
 
         return null
@@ -612,9 +588,6 @@ class JarvisAccessibilityService : AccessibilityService() {
                 false
             } else {
 
-                /*
-                 * Click first if possible.
-                 */
                 if (node.isClickable) {
                     node.performAction(
                         AccessibilityNodeInfo.ACTION_CLICK
