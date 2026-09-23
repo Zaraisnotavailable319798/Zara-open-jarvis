@@ -4,20 +4,21 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.os.Bundle
-import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityEvent
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import android.view.accessibility.AccessibilityNodeInfo
+import java.util.ArrayDeque
 
 class JarvisAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+
         instance = this
 
         val info = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityEvent.TYPE_ALL_MASK
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+
             flags =
                 AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
                 AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY
@@ -29,9 +30,11 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // Events are currently handled on demand.
     }
 
     override fun onInterrupt() {
+        // Required by AccessibilityService.
     }
 
     override fun onDestroy() {
@@ -40,19 +43,17 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     /*
-     * OPEN APP
+     * OPEN APP BY PACKAGE
      */
     fun openAppByPackage(packageName: String): Boolean {
         return try {
             val intent = packageManager.getLaunchIntentForPackage(packageName)
+                ?: return false
 
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-                true
-            } else {
-                false
-            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+
+            true
         } catch (e: Exception) {
             false
         }
@@ -62,50 +63,52 @@ class JarvisAccessibilityService : AccessibilityService() {
      * OPEN APP BY LABEL
      */
     fun openAppByLabel(label: String): Boolean {
-        val pm = packageManager
+        return try {
+            val pm = packageManager
 
-        val intent = Intent(Intent.ACTION_MAIN, null).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
-        }
-
-        val apps = pm.queryIntentActivities(intent, 0)
-        val normalizedLabel = label.lowercase().trim()
-
-        for (app in apps) {
-            val appLabel = app.loadLabel(pm).toString().lowercase()
-
-            if (
-                appLabel.contains(normalizedLabel) ||
-                normalizedLabel.contains(appLabel)
-            ) {
-                return openAppByPackage(
-                    app.activityInfo.packageName
-                )
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
             }
-        }
 
-        return false
+            val apps = pm.queryIntentActivities(intent, 0)
+            val normalizedLabel = label.lowercase().trim()
+
+            for (app in apps) {
+                val appLabel =
+                    app.loadLabel(pm).toString().lowercase().trim()
+
+                if (
+                    appLabel.contains(normalizedLabel) ||
+                    normalizedLabel.contains(appLabel)
+                ) {
+                    return openAppByPackage(
+                        app.activityInfo.packageName
+                    )
+                }
+            }
+
+            false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /*
      * TAP BY TEXT
      */
     fun tapByText(text: String): Boolean {
-        val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
         return try {
-            val node = findNodeByText(rootNode, text)
+            val node = findNodeByText(root, text)
 
             if (node != null) {
-                val result = performClickOnNode(node)
-
-                node.recycle()
-                result
+                performClickOnNode(node)
             } else {
                 false
             }
         } finally {
-            rootNode.recycle()
+            root.recycle()
         }
     }
 
@@ -113,48 +116,40 @@ class JarvisAccessibilityService : AccessibilityService() {
      * TAP BY CONTENT DESCRIPTION
      */
     fun tapByContentDescription(description: String): Boolean {
-        val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
         return try {
             val node = findNodeByContentDescription(
-                rootNode,
+                root,
                 description
             )
 
             if (node != null) {
-                val result = performClickOnNode(node)
-
-                node.recycle()
-                result
+                performClickOnNode(node)
             } else {
                 false
             }
         } finally {
-            rootNode.recycle()
+            root.recycle()
         }
     }
 
     /*
-     * FIND + FOCUS INPUT FIELD
-     *
-     * This is important for Copilot.
+     * FOCUS INPUT BY TEXT / HINT / DESCRIPTION
      */
     fun focusInputByText(text: String): Boolean {
-        val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
         return try {
-            val node = findNodeByTextAnywhere(rootNode, text)
+            val node = findInputByText(root, text)
 
             if (node != null) {
-                val focused = focusInputNode(node)
-
-                node.recycle()
-                focused
+                focusInputNode(node)
             } else {
                 false
             }
         } finally {
-            rootNode.recycle()
+            root.recycle()
         }
     }
 
@@ -162,155 +157,147 @@ class JarvisAccessibilityService : AccessibilityService() {
      * FOCUS FIRST AVAILABLE INPUT
      */
     fun focusFirstInput(): Boolean {
-        val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
         return try {
-            val input = findFirstInputNode(rootNode)
+            val input = findFirstInputNode(root)
 
             if (input != null) {
-                val result = input.performAction(
-                    AccessibilityNodeInfo.ACTION_FOCUS
-                )
-
-                input.recycle()
-                result
+                focusInputNode(input)
             } else {
                 false
             }
         } finally {
-            rootNode.recycle()
+            root.recycle()
         }
     }
 
     /*
      * TYPE TEXT
      *
-     * First tries the currently focused input.
-     * If none exists, tries to find an editable field.
+     * Tries the currently focused input first.
+     * Then searches for an editable field.
      */
     fun typeText(text: String): Boolean {
-        val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
         return try {
-
             var target =
-                rootNode.findFocus(
+                root.findFocus(
                     AccessibilityNodeInfo.FOCUS_INPUT
                 )
 
             if (target == null) {
-                target = findFirstInputNode(rootNode)
+                target = findFirstInputNode(root)
             }
 
             if (target == null) {
                 false
             } else {
-
-                target.performAction(
-                    AccessibilityNodeInfo.ACTION_FOCUS
-                )
-
-                val arguments = Bundle().apply {
-                    putCharSequence(
-                        AccessibilityNodeInfo
-                            .ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                        text
-                    )
-                }
-
-                val result = target.performAction(
-                    AccessibilityNodeInfo.ACTION_SET_TEXT,
-                    arguments
-                )
-
-                target.recycle()
-
-                result
+                typeIntoNode(target, text)
             }
-
         } finally {
-            rootNode.recycle()
+            root.recycle()
         }
     }
 
     /*
-     * TYPE TEXT INTO A SPECIFIC INPUT
+     * TYPE TEXT INTO SPECIFIC INPUT
      */
     fun typeTextIntoInput(
         hintOrText: String,
         text: String
     ): Boolean {
-
-        val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
         return try {
-
             val node = findInputByText(
-                rootNode,
+                root,
                 hintOrText
             )
 
-            if (node == null) {
-                false
+            if (node != null) {
+                typeIntoNode(node, text)
             } else {
+                false
+            }
+        } finally {
+            root.recycle()
+        }
+    }
 
-                node.performAction(
-                    AccessibilityNodeInfo.ACTION_FOCUS
-                )
+    /*
+     * TYPE INTO NODE
+     *
+     * First tries click + focus.
+     * Then attempts ACTION_SET_TEXT.
+     */
+    private fun typeIntoNode(
+        node: AccessibilityNodeInfo,
+        text: String
+    ): Boolean {
 
-                val arguments = Bundle().apply {
-                    putCharSequence(
-                        AccessibilityNodeInfo
-                            .ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                        text
-                    )
-                }
+        return try {
 
-                val result = node.performAction(
-                    AccessibilityNodeInfo.ACTION_SET_TEXT,
-                    arguments
-                )
-
-                node.recycle()
-
-                result
+            if (!node.isVisibleToUser || !node.isEnabled) {
+                return false
             }
 
+            /*
+             * Some apps require the field to be clicked
+             * before it accepts focus/text.
+             */
+            if (node.isClickable) {
+                node.performAction(
+                    AccessibilityNodeInfo.ACTION_CLICK
+                )
+            }
+
+            node.performAction(
+                AccessibilityNodeInfo.ACTION_FOCUS
+            )
+
+            val arguments = Bundle().apply {
+                putCharSequence(
+                    AccessibilityNodeInfo
+                        .ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                    text
+                )
+            }
+
+            node.performAction(
+                AccessibilityNodeInfo.ACTION_SET_TEXT,
+                arguments
+            )
         } finally {
-            rootNode.recycle()
+            node.recycle()
         }
     }
 
     /*
      * PRESS ENTER
-     *
-     * Useful as a fallback when an AI app submits
-     * a message through the keyboard.
      */
     fun pressEnter(): Boolean {
-        return try {
-            val rootNode = rootInActiveWindow ?: return false
+        val root = rootInActiveWindow ?: return false
 
-            val input = rootNode.findFocus(
+        return try {
+            val input = root.findFocus(
                 AccessibilityNodeInfo.FOCUS_INPUT
             )
 
             if (input != null) {
-                val result = input.performAction(
-                    AccessibilityNodeInfo.ACTION_IME_ENTER
-                )
-
-                input.recycle()
-                rootNode.recycle()
-
-                result
+                try {
+                    input.performAction(
+                        AccessibilityNodeInfo.ACTION_IME_ENTER
+                    )
+                } finally {
+                    input.recycle()
+                }
             } else {
-                rootNode.recycle()
                 false
             }
-
-        } catch (e: Exception) {
-            false
+        } finally {
+            root.recycle()
         }
     }
 
@@ -329,46 +316,44 @@ class JarvisAccessibilityService : AccessibilityService() {
     /*
      * CLICK HELPER
      *
-     * Some UI elements are not directly clickable.
-     * We walk upward through parents until we find
-     * a clickable container.
+     * If the matched node itself is not clickable,
+     * walks upward to find a clickable parent.
      */
     private fun performClickOnNode(
         node: AccessibilityNodeInfo
     ): Boolean {
 
-        if (node.isClickable && node.isVisibleToUser) {
-            return node.performAction(
-                AccessibilityNodeInfo.ACTION_CLICK
-            )
-        }
-
-        var parent = node.parent
-
-        while (parent != null) {
-
+        try {
             if (
-                parent.isClickable &&
-                parent.isVisibleToUser
+                node.isClickable &&
+                node.isVisibleToUser
             ) {
-
-                val result = parent.performAction(
+                return node.performAction(
                     AccessibilityNodeInfo.ACTION_CLICK
                 )
-
-                parent.recycle()
-
-                return result
             }
 
-            val next = parent.parent
+            var parent = node.parent
 
-            parent.recycle()
+            while (parent != null) {
 
-            parent = next
+                if (
+                    parent.isClickable &&
+                    parent.isVisibleToUser
+                ) {
+                    return parent.performAction(
+                        AccessibilityNodeInfo.ACTION_CLICK
+                    )
+                }
+
+                parent = parent.parent
+            }
+
+            return false
+
+        } finally {
+            node.recycle()
         }
-
-        return false
     }
 
     /*
@@ -379,17 +364,21 @@ class JarvisAccessibilityService : AccessibilityService() {
         text: String
     ): AccessibilityNodeInfo? {
 
-        val normalizedText = text.lowercase().trim()
-
         return findNodeByTextAnywhere(
             root,
-            normalizedText,
+            text,
             true
         )
     }
 
     /*
-     * FIND TEXT ANYWHERE
+     * FIND TEXT / CONTENT DESCRIPTION
+     *
+     * Uses a fresh accessibility snapshot traversal.
+     *
+     * Important:
+     * We do NOT recycle nodes while they are still
+     * needed by the traversal.
      */
     private fun findNodeByTextAnywhere(
         root: AccessibilityNodeInfo,
@@ -397,7 +386,8 @@ class JarvisAccessibilityService : AccessibilityService() {
         requireClickable: Boolean = false
     ): AccessibilityNodeInfo? {
 
-        val normalizedText = text.lowercase().trim()
+        val normalizedText =
+            text.lowercase().trim()
 
         val queue =
             ArrayDeque<AccessibilityNodeInfo>()
@@ -409,7 +399,10 @@ class JarvisAccessibilityService : AccessibilityService() {
             val node = queue.removeFirst()
 
             val nodeText =
-                node.text?.toString()?.lowercase()?.trim()
+                node.text
+                    ?.toString()
+                    ?.lowercase()
+                    ?.trim()
 
             val contentDescription =
                 node.contentDescription
@@ -430,17 +423,17 @@ class JarvisAccessibilityService : AccessibilityService() {
             }
 
             for (i in 0 until node.childCount) {
-
-                val child = node.getChild(i)
-
-                if (child != null) {
+                node.getChild(i)?.let { child ->
                     queue.add(child)
                 }
             }
 
-            if (node !== root) {
-                node.recycle()
-            }
+            /*
+             * Don't recycle here.
+             *
+             * The returned node and queued nodes may still
+             * be referenced during traversal.
+             */
         }
 
         return null
@@ -480,14 +473,9 @@ class JarvisAccessibilityService : AccessibilityService() {
             }
 
             for (i in 0 until node.childCount) {
-
                 node.getChild(i)?.let { child ->
                     queue.add(child)
                 }
-            }
-
-            if (node !== root) {
-                node.recycle()
             }
         }
 
@@ -495,7 +483,7 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     /*
-     * FIND INPUT FIELD
+     * FIND FIRST INPUT
      */
     private fun findFirstInputNode(
         root: AccessibilityNodeInfo
@@ -512,8 +500,12 @@ class JarvisAccessibilityService : AccessibilityService() {
 
             val isInput =
                 node.isEditable ||
-                node.className?.toString()
-                    ?.contains("EditText", true) == true
+                node.className
+                    ?.toString()
+                    ?.contains(
+                        "EditText",
+                        ignoreCase = true
+                    ) == true
 
             if (
                 isInput &&
@@ -524,14 +516,9 @@ class JarvisAccessibilityService : AccessibilityService() {
             }
 
             for (i in 0 until node.childCount) {
-
                 node.getChild(i)?.let { child ->
                     queue.add(child)
                 }
-            }
-
-            if (node !== root) {
-                node.recycle()
             }
         }
 
@@ -559,12 +546,14 @@ class JarvisAccessibilityService : AccessibilityService() {
             val node = queue.removeFirst()
 
             val text =
-                node.text?.toString()
+                node.text
+                    ?.toString()
                     ?.lowercase()
                     ?.trim()
 
             val hint =
-                node.hintText?.toString()
+                node.hintText
+                    ?.toString()
                     ?.lowercase()
                     ?.trim()
 
@@ -576,8 +565,12 @@ class JarvisAccessibilityService : AccessibilityService() {
 
             val isInput =
                 node.isEditable ||
-                node.className?.toString()
-                    ?.contains("EditText", true) == true
+                node.className
+                    ?.toString()
+                    ?.contains(
+                        "EditText",
+                        ignoreCase = true
+                    ) == true
 
             val matches =
                 text?.contains(normalized) == true ||
@@ -594,14 +587,9 @@ class JarvisAccessibilityService : AccessibilityService() {
             }
 
             for (i in 0 until node.childCount) {
-
                 node.getChild(i)?.let { child ->
                     queue.add(child)
                 }
-            }
-
-            if (node !== root) {
-                node.recycle()
             }
         }
 
@@ -615,16 +603,32 @@ class JarvisAccessibilityService : AccessibilityService() {
         node: AccessibilityNodeInfo
     ): Boolean {
 
-        if (
-            !node.isVisibleToUser ||
-            !node.isEnabled
-        ) {
-            return false
-        }
+        return try {
 
-        return node.performAction(
-            AccessibilityNodeInfo.ACTION_FOCUS
-        )
+            if (
+                !node.isVisibleToUser ||
+                !node.isEnabled
+            ) {
+                false
+            } else {
+
+                /*
+                 * Click first if possible.
+                 */
+                if (node.isClickable) {
+                    node.performAction(
+                        AccessibilityNodeInfo.ACTION_CLICK
+                    )
+                }
+
+                node.performAction(
+                    AccessibilityNodeInfo.ACTION_FOCUS
+                )
+            }
+
+        } finally {
+            node.recycle()
+        }
     }
 
     companion object {
