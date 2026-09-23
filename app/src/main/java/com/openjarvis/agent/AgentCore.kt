@@ -30,7 +30,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
 
 class AgentCore(private val context: Context) {
 
@@ -41,17 +40,32 @@ class AgentCore(private val context: Context) {
     private val visionModule = VisionModule.getInstance(context)
     private val taskRouter = TaskRouter(context)
     private val appAnalyzer = AppAnalyzer(context)
-    private val aiAppInteractor = AIAppInteractor(context)
+
+    /*
+     * AIAppInteractor requires the active AccessibilityService.
+     * Resolve it only when needed because the service may not exist
+     * when AgentCore is created.
+     */
+    private val aiAppInteractor: AIAppInteractor?
+        get() = JarvisAccessibilityService.instance?.let {
+            AIAppInteractor(it)
+        }
 
     private var workingMemory = TaskWorkingMemory()
 
-    private val scope = CoroutineScope(Dispatchers.IO)
-    private val taskMutex = Mutex()
+    private val scope =
+        CoroutineScope(Dispatchers.IO)
+
+    private val taskMutex =
+        Mutex()
 
     private val _state =
-        MutableStateFlow<AgentState>(AgentState.Idle)
+        MutableStateFlow<AgentState>(
+            AgentState.Idle
+        )
 
-    val state: StateFlow<AgentState> = _state
+    val state: StateFlow<AgentState> =
+        _state
 
     private val systemPrompt = """
 You are Open Jarvis — an Android device control AI agent.
@@ -100,7 +114,8 @@ RULES:
 
     fun executeTask(cleanCommand: String) {
 
-        workingMemory = TaskWorkingMemory()
+        workingMemory =
+            TaskWorkingMemory()
 
         scope.launch {
 
@@ -109,19 +124,26 @@ RULES:
                 try {
 
                     val sanitized =
-                        PromptSanitizer.sanitize(cleanCommand)
+                        PromptSanitizer.sanitize(
+                            cleanCommand
+                        )
 
                     when (sanitized) {
 
                         is PromptSanitizer.SanitizeResult.Rejected -> {
                             _state.value =
-                                AgentState.Error(sanitized.reason)
+                                AgentState.Error(
+                                    sanitized.reason
+                                )
+
                             return@withLock
                         }
 
                         is PromptSanitizer.SanitizeResult.Suspicious -> {
                             _state.value =
-                                AgentState.Running("analyzing...")
+                                AgentState.Running(
+                                    "analyzing..."
+                                )
                         }
 
                         is PromptSanitizer.SanitizeResult.Clean -> {
@@ -142,13 +164,19 @@ RULES:
                         }
 
                     _state.value =
-                        AgentState.Running("analyzing task...")
+                        AgentState.Running(
+                            "analyzing task..."
+                        )
 
                     val plan =
-                        taskRouter.analyze(finalCommand)
+                        taskRouter.analyze(
+                            finalCommand
+                        )
 
                     _state.value =
-                        AgentState.Running("reading screen...")
+                        AgentState.Running(
+                            "reading screen..."
+                        )
 
                     val screenText =
                         withContext(Dispatchers.IO) {
@@ -156,10 +184,14 @@ RULES:
                         }
 
                     _state.value =
-                        AgentState.Running("getting context...")
+                        AgentState.Running(
+                            "getting context..."
+                        )
 
                     val memoryContext =
-                        graphifyRepo.buildMemoryContext(finalCommand)
+                        graphifyRepo.buildMemoryContext(
+                            finalCommand
+                        )
 
                     val fullSystem =
                         systemPrompt
@@ -177,7 +209,9 @@ RULES:
                             )
                             .replace(
                                 "{GRAPHIFY_CONTEXT}",
-                                if (memoryContext.isBlank()) {
+                                if (
+                                    memoryContext.isBlank()
+                                ) {
                                     "No recent tasks"
                                 } else {
                                     memoryContext
@@ -185,7 +219,9 @@ RULES:
                             )
 
                     _state.value =
-                        AgentState.Running("thinking...")
+                        AgentState.Running(
+                            "thinking..."
+                        )
 
                     val startTime =
                         System.currentTimeMillis()
@@ -245,7 +281,9 @@ RULES:
                                     retry
                                         .getOrNull()
                                         ?.let {
-                                            ActionJsonParser.parse(it)
+                                            ActionJsonParser.parse(
+                                                it
+                                            )
                                         }
                                 }
 
@@ -271,14 +309,15 @@ RULES:
                                     "executing ${actions.size} actions..."
                                 )
 
-                            executeActions(actions)
+                            executeActions(
+                                actions
+                            )
 
                             graphifyRepo.logTask(
-                                cleanCommand = finalCommand,
-                                result = "success",
-                                provider =
-                                    universalAdapter.getProviderName(),
-                                latencyMs = latency
+                                finalCommand,
+                                "success",
+                                universalAdapter.getProviderName(),
+                                latency
                             )
 
                             analysisEngine.analyzeLastTask()
@@ -333,7 +372,8 @@ RULES:
 
                     _state.value =
                         AgentState.Error(
-                            e.message ?: "Unknown error"
+                            e.message
+                                ?: "Unknown error"
                         )
 
                     graphifyRepo.logTask(
@@ -369,7 +409,9 @@ RULES:
                             packageName,
                             0
                         )
+
                         true
+
                     } catch (_: Exception) {
                         false
                     }
@@ -395,7 +437,10 @@ RULES:
         actions: List<Action>
     ) {
 
-        for ((index, action) in actions.withIndex()) {
+        for (
+            (index, action)
+            in actions.withIndex()
+        ) {
 
             _state.value =
                 AgentState.Running(
@@ -429,23 +474,20 @@ RULES:
                     Action.SCROLL ->
                         executeScroll(action)
 
-                    Action.PRESS_BACK -> {
+                    Action.PRESS_BACK ->
                         JarvisAccessibilityService
                             .instance
                             ?.pressBack() == true
-                    }
 
-                    Action.PRESS_HOME -> {
+                    Action.PRESS_HOME ->
                         JarvisAccessibilityService
                             .instance
                             ?.pressHome() == true
-                    }
 
-                    Action.PRESS_RECENTS -> {
+                    Action.PRESS_RECENTS ->
                         JarvisAccessibilityService
                             .instance
                             ?.pressRecents() == true
-                    }
 
                     Action.WAIT_FOR ->
                         executeWaitFor(action)
@@ -466,7 +508,8 @@ RULES:
 
                         _state.value =
                             AgentState.Error(
-                                action.message ?: "Task failed"
+                                action.message
+                                    ?: "Task failed"
                             )
 
                         return
@@ -497,7 +540,7 @@ RULES:
         }
     }
 
-    private fun executeOpenApp(
+    private suspend fun executeOpenApp(
         action: Action
     ): Boolean {
 
@@ -520,12 +563,15 @@ RULES:
         }
 
         val label =
-            action.label ?: packageName
+            action.label
+                ?: packageName
 
         val opened =
             JarvisAccessibilityService
                 .instance
-                ?.openAppByPackage(packageName)
+                ?.openAppByPackage(
+                    packageName
+                )
                 ?: false
 
         if (opened) {
@@ -544,7 +590,8 @@ RULES:
     ): Boolean {
 
         val text =
-            action.text ?: return false
+            action.text
+                ?: return false
 
         return JarvisAccessibilityService
             .instance
@@ -557,12 +604,17 @@ RULES:
     ): Boolean {
 
         val x =
-            action.x ?: return false
+            action.x
+                ?: return false
 
         val y =
-            action.y ?: return false
+            action.y
+                ?: return false
 
-        return performTap(x, y)
+        return performTap(
+            x,
+            y
+        )
     }
 
     private fun executeType(
@@ -606,7 +658,8 @@ RULES:
     ): Boolean {
 
         val text =
-            action.text ?: return false
+            action.text
+                ?: return false
 
         val service =
             JarvisAccessibilityService
@@ -684,6 +737,7 @@ RULES:
             "up" -> {
                 startY =
                     centerY + distance / 2f
+
                 endY =
                     centerY - distance / 2f
             }
@@ -691,6 +745,7 @@ RULES:
             "down" -> {
                 startY =
                     centerY - distance / 2f
+
                 endY =
                     centerY + distance / 2f
             }
@@ -698,6 +753,7 @@ RULES:
             "left" -> {
                 startX =
                     centerX + distance / 2f
+
                 endX =
                     centerX - distance / 2f
             }
@@ -705,6 +761,7 @@ RULES:
             "right" -> {
                 startX =
                     centerX - distance / 2f
+
                 endX =
                     centerX + distance / 2f
             }
@@ -735,7 +792,9 @@ RULES:
             action.copy(
                 action = Action.SWIPE,
                 direction = direction,
-                distance = action.distance ?: "medium"
+                distance =
+                    action.distance
+                        ?: "medium"
             )
         )
     }
@@ -784,12 +843,6 @@ RULES:
 
     private suspend fun executeScreenshot(): Boolean {
 
-        /*
-         * AccessibilityService does not automatically provide
-         * a screenshot API. Do not pretend a screenshot was taken.
-         *
-         * We refresh the readable screen state instead.
-         */
         return withContext(Dispatchers.IO) {
             screenReader.extractAllText()
             true
@@ -829,7 +882,13 @@ RULES:
                 ?: "ai_result"
 
         val meta =
-            AIApps.KNOWN_AI_APPS[packageName]
+            AIApps.KNOWN_AI_APPS[
+                packageName
+            ]
+                ?: return false
+
+        val interactor =
+            aiAppInteractor
                 ?: return false
 
         _state.value =
@@ -838,7 +897,7 @@ RULES:
             )
 
         val response =
-            aiAppInteractor.runPrompt(
+            interactor.runPrompt(
                 meta = meta,
                 prompt = prompt,
                 timeoutMs = 60_000
@@ -1021,7 +1080,7 @@ RULES:
             text.lowercase().trim()
 
         val queue =
-            ArrayDeque<AccessibilityNodeInfo>()
+            java.util.ArrayDeque<AccessibilityNodeInfo>()
 
         queue.add(root)
 
