@@ -8,7 +8,6 @@ import android.graphics.Rect
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import android.accessibilityservice.GestureDescription
-
 import com.openjarvis.accessibility.JarvisAccessibilityService
 import com.openjarvis.accessibility.ScreenReader
 import com.openjarvis.graphify.AnalysisEngine
@@ -20,7 +19,6 @@ import com.openjarvis.intelligence.TaskRouter
 import com.openjarvis.intelligence.TaskWorkingMemory
 import com.openjarvis.llm.UniversalAdapter
 import com.openjarvis.vision.VisionModule
-
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -41,11 +39,15 @@ class AgentCore(private val context: Context) {
     private val taskRouter = TaskRouter(context)
     private val appAnalyzer = AppAnalyzer(context)
 
+    /*
+     * AIAppInteractor requires the active AccessibilityService.
+     * Resolve it only when needed because the service may not exist
+     * when AgentCore is created.
+     */
     private val aiAppInteractor: AIAppInteractor?
         get() {
             val service =
                 JarvisAccessibilityService.instance
-                    as? JarvisAccessibilityService
                     ?: return null
 
             return AIAppInteractor(service)
@@ -279,7 +281,9 @@ RULES:
                                     retry
                                         .getOrNull()
                                         ?.let {
-                                            ActionJsonParser.parse(it)
+                                            ActionJsonParser.parse(
+                                                it
+                                            )
                                         }
                                 }
 
@@ -401,7 +405,9 @@ RULES:
                             packageName,
                             0
                         )
+
                         true
+
                     } catch (_: Exception) {
                         false
                     }
@@ -725,23 +731,35 @@ RULES:
         when (direction) {
 
             "up" -> {
-                startY = centerY + distance / 2f
-                endY = centerY - distance / 2f
+                startY =
+                    centerY + distance / 2f
+
+                endY =
+                    centerY - distance / 2f
             }
 
             "down" -> {
-                startY = centerY - distance / 2f
-                endY = centerY + distance / 2f
+                startY =
+                    centerY - distance / 2f
+
+                endY =
+                    centerY + distance / 2f
             }
 
             "left" -> {
-                startX = centerX + distance / 2f
-                endX = centerX - distance / 2f
+                startX =
+                    centerX + distance / 2f
+
+                endX =
+                    centerX - distance / 2f
             }
 
             "right" -> {
-                startX = centerX - distance / 2f
-                endX = centerX + distance / 2f
+                startX =
+                    centerX - distance / 2f
+
+                endX =
+                    centerX + distance / 2f
             }
 
             else ->
@@ -1018,8 +1036,15 @@ RULES:
 
         val path =
             Path().apply {
-                moveTo(startX, startY)
-                lineTo(endX, endY)
+                moveTo(
+                    startX,
+                    startY
+                )
+
+                lineTo(
+                    endX,
+                    endY
+                )
             }
 
         val stroke =
