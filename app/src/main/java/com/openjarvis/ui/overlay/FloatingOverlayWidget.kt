@@ -1,34 +1,50 @@
 package com.openjarvis.ui.overlay
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pointerInput
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
@@ -44,10 +60,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openjarvis.agent.AgentState
 import com.openjarvis.graphify.nodes.TaskNode
-import com.openjarvis.ui.theme.VoidColor
 import com.openjarvis.voice.VoiceManager
 import com.openjarvis.voice.VoiceManager.VoiceState
 import kotlinx.coroutines.delay
+
+private object VoidColor {
+    val Void950 = Color(0xFF0B0712)
+    val Void900 = Color(0xFF120D1C)
+    val Void800 = Color(0xFF1B1428)
+    val Void700 = Color(0xFF241B33)
+    val Void600 = Color(0xFF30263F)
+
+    val Violet = Color(0xFF9B6DFF)
+    val Cyan = Color(0xFF58D7FF)
+    val Green = Color(0xFF55E6A5)
+    val Red = Color(0xFFFF5F6D)
+    val Amber = Color(0xFFFFC857)
+
+    val TextPrimary = Color(0xFFF5F0FF)
+    val TextSecondary = Color(0xFFB7AFC5)
+    val TextDisabled = Color(0xFF8E869B)
+}
 
 @Composable
 fun FloatingOverlayWidget(
@@ -65,7 +98,8 @@ fun FloatingOverlayWidget(
     var placeholderText by remember { mutableStateOf("") }
     var isRecording by remember { mutableStateOf(false) }
 
-    val voiceState by voiceManager?.state?.collectAsState() ?: remember { mutableStateOf(VoiceState.Idle) }
+    val voiceState by voiceManager?.state?.collectAsState()
+        ?: remember { mutableStateOf(VoiceState.Idle) }
 
     LaunchedEffect(isExpanded) {
         if (isExpanded && !hasAnimatedOnce) {
@@ -78,11 +112,10 @@ fun FloatingOverlayWidget(
         }
     }
 
-    // Update recording state from voice state
     LaunchedEffect(voiceState) {
         isRecording = voiceState is VoiceState.Recording
+
         if (voiceState is VoiceState.Result) {
-            // Auto-fill transcribed text
             commandText = (voiceState as VoiceState.Result).text
         }
     }
@@ -91,29 +124,48 @@ fun FloatingOverlayWidget(
         targetState = isExpanded,
         transitionSpec = {
             if (targetState) {
-                (expandHorizontally(
-                    animationSpec = spring(
-                        stiffness = Spring.StiffnessMedium,
-                        dampingRatio = 0.8f
-                    )
-                ) + expandVertically(
-                    animationSpec = spring(
-                        stiffness = 260f,
-                        dampingRatio = 0.8f
-                    )
-                ) + fadeIn(animationSpec = tween(150, delayMillis = 240)))
+                (
+                    expandHorizontally(
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessMedium,
+                            dampingRatio = 0.8f
+                        )
+                    ) +
+                        expandVertically(
+                            animationSpec = spring(
+                                stiffness = 260f,
+                                dampingRatio = 0.8f
+                            )
+                        ) +
+                        fadeIn(
+                            animationSpec = tween(
+                                150,
+                                delayMillis = 240
+                            )
+                        )
+                    ) togetherWith fadeOut(
+                    animationSpec = tween(100)
+                )
             } else {
-                (shrinkHorizontally(
-                    animationSpec = spring(
-                        stiffness = Spring.StiffnessMedium,
-                        dampingRatio = 0.8f
-                    )
-                ) + shrinkVertically(
-                    animationSpec = spring(
-                        stiffness = Spring.StiffnessMedium,
-                        dampingRatio = 0.8f
-                    )
-                ) + fadeOut(animationSpec = tween(100)))
+                (
+                    shrinkHorizontally(
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessMedium,
+                            dampingRatio = 0.8f
+                        )
+                    ) +
+                        shrinkVertically(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessMedium,
+                                dampingRatio = 0.8f
+                            )
+                        ) +
+                        fadeOut(
+                            animationSpec = tween(100)
+                        )
+                    ) togetherWith fadeIn(
+                    animationSpec = tween(100)
+                )
             }
         },
         label = "overlay_expand"
@@ -169,24 +221,33 @@ private fun CollapsedPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var glowAlpha by remember { mutableFloatStateOf(0.15f) }
+    val infiniteTransition = rememberInfiniteTransition(
+        label = "pill_glow"
+    )
 
-    LaunchedEffect(Unit) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.15f,
-            targetValue = 0.45f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(3000, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            )
-        ) { glowAlpha = this }
-    }
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.15f,
+        targetValue = 0.45f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                3000,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_alpha"
+    )
 
-    val statusScale by rememberInfiniteTransition(label = "status").animateFloat(
+    val statusScale by rememberInfiniteTransition(
+        label = "status"
+    ).animateFloat(
         initialValue = 0.75f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
+            animation = tween(
+                2000,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
@@ -204,7 +265,9 @@ private fun CollapsedPill(
             .width(140.dp)
             .height(48.dp)
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { onClick() })
+                detectTapGestures(
+                    onTap = { onClick() }
+                )
             },
         shape = RoundedCornerShape(999.dp),
         color = VoidColor.Void900.copy(alpha = 0.95f),
@@ -230,7 +293,9 @@ private fun CollapsedPill(
                     .scale(statusScale),
                 contentAlignment = Alignment.Center
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
+                Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     drawCircle(color = statusColor)
                 }
             }
@@ -289,7 +354,10 @@ private fun ExpandedOverlay(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight(),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        shape = RoundedCornerShape(
+            topStart = 20.dp,
+            topEnd = 20.dp
+        ),
         color = VoidColor.Void900,
         tonalElevation = 0.dp
     ) {
@@ -305,7 +373,9 @@ private fun ExpandedOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(30.dp)
-                    .background(VoidColor.Violet.copy(alpha = 0.2f))
+                    .background(
+                        VoidColor.Violet.copy(alpha = 0.2f)
+                    )
             )
 
             Column(
@@ -316,9 +386,13 @@ private fun ExpandedOverlay(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         StatusOrb(state = agentState)
+
                         Spacer(modifier = Modifier.width(8.dp))
+
                         Text(
                             text = "JARVIS",
                             style = TextStyle(
@@ -330,7 +404,9 @@ private fun ExpandedOverlay(
                         )
                     }
 
-                    IconButton(onClick = onCollapse) {
+                    IconButton(
+                        onClick = onCollapse
+                    ) {
                         Icon(
                             imageVector = Icons.Default.KeyboardArrowDown,
                             contentDescription = "Collapse",
@@ -341,7 +417,10 @@ private fun ExpandedOverlay(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                StatusLine(state = agentState, stepText = stepText)
+                StatusLine(
+                    state = agentState,
+                    stepText = stepText
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -349,18 +428,26 @@ private fun ExpandedOverlay(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (suggestions.isNotEmpty() && agentState is AgentState.Idle) {
+                if (
+                    suggestions.isNotEmpty() &&
+                    agentState is AgentState.Idle
+                ) {
                     SuggestionChips(
                         suggestions = suggestions,
                         onSuggestionClick = onSuggestionClick
                     )
+
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 InputRowWithVoice(
                     commandText = commandText,
                     onCommandTextChange = onCommandTextChange,
-                    placeholderText = if (commandText.isEmpty()) placeholderText else "",
+                    placeholderText = if (commandText.isEmpty()) {
+                        placeholderText
+                    } else {
+                        ""
+                    },
                     voiceState = voiceState,
                     onVoicePressStart = onVoicePressStart,
                     onVoicePressEnd = onVoicePressEnd,
@@ -373,7 +460,9 @@ private fun ExpandedOverlay(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                TaskLogWidget(tasks = recentTasks.take(3))
+                TaskLogWidget(
+                    tasks = recentTasks.take(3)
+                )
             }
         }
     }
@@ -381,13 +470,18 @@ private fun ExpandedOverlay(
 
 @Composable
 private fun StatusOrb(state: AgentState) {
-    val infiniteTransition = rememberInfiniteTransition(label = "orb")
+    val infiniteTransition = rememberInfiniteTransition(
+        label = "orb"
+    )
 
     val scale by infiniteTransition.animateFloat(
         initialValue = 0.7f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(
+                1500,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "orb_scale"
@@ -406,19 +500,29 @@ private fun StatusOrb(state: AgentState) {
             .scale(scale),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
             drawCircle(color = color)
         }
     }
 }
 
 @Composable
-private fun StatusLine(state: AgentState, stepText: String) {
-    val cursorAlpha by rememberInfiniteTransition(label = "cursor").animateFloat(
+private fun StatusLine(
+    state: AgentState,
+    stepText: String
+) {
+    val cursorAlpha by rememberInfiniteTransition(
+        label = "cursor"
+    ).animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(
+                1000,
+                easing = androidx.compose.animation.core.LinearEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "cursor_alpha"
@@ -439,9 +543,8 @@ private fun StatusLine(state: AgentState, stepText: String) {
             text = when (state) {
                 is AgentState.Idle -> "_ ready for command"
                 is AgentState.Running -> "◉ $stepText"
-                is AgentState.Done -> "✓ done in ${stepText}"
+                is AgentState.Done -> "✓ done in $stepText"
                 is AgentState.Error -> "✗ $stepText"
-                else -> ""
             },
             style = TextStyle(
                 fontFamily = FontFamily.Monospace,
@@ -455,7 +558,11 @@ private fun StatusLine(state: AgentState, stepText: String) {
                 modifier = Modifier
                     .width(1.dp)
                     .height(12.dp)
-                    .background(VoidColor.TextDisabled.copy(alpha = cursorAlpha))
+                    .background(
+                        VoidColor.TextDisabled.copy(
+                            alpha = cursorAlpha
+                        )
+                    )
             )
         }
     }
@@ -476,12 +583,17 @@ private fun InputRowWithVoice(
 
     val scale by animateFloatAsState(
         targetValue = if (isRecording) 1.15f else 1f,
-        animationSpec = spring(stiffness = 400f, dampingRatio = 0.5f)
+        animationSpec = spring(
+            stiffness = 400f,
+            dampingRatio = 0.5f
+        ),
+        label = "voice_scale"
     )
 
     val glowAlpha by animateFloatAsState(
         targetValue = if (isRecording) 0.6f else 0f,
-        animationSpec = tween(200)
+        animationSpec = tween(200),
+        label = "voice_glow"
     )
 
     val bgColor by animateColorAsState(
@@ -490,7 +602,8 @@ private fun InputRowWithVoice(
             isTranscribing -> VoidColor.Amber
             else -> VoidColor.Void700
         },
-        animationSpec = tween(200)
+        animationSpec = tween(200),
+        label = "voice_color"
     )
 
     Row(
@@ -499,7 +612,6 @@ private fun InputRowWithVoice(
             .height(56.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Voice button
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -520,7 +632,9 @@ private fun InputRowWithVoice(
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            color = VoidColor.Red.copy(alpha = glowAlpha * 0.3f),
+                            color = VoidColor.Red.copy(
+                                alpha = glowAlpha * 0.3f
+                            ),
                             shape = CircleShape
                         )
                 )
@@ -531,7 +645,9 @@ private fun InputRowWithVoice(
                 color = bgColor,
                 modifier = Modifier.size(36.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Voice input",
@@ -572,7 +688,9 @@ private fun InputRowWithVoice(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Send
             ),
-            keyboardActions = KeyboardActions(onSend = { onSend() }),
+            keyboardActions = KeyboardActions(
+                onSend = { onSend() }
+            ),
             decorationBox = { innerTextField ->
                 Box {
                     if (commandText.isEmpty()) {
@@ -581,10 +699,13 @@ private fun InputRowWithVoice(
                             style = TextStyle(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 14.sp,
-                                color = VoidColor.TextDisabled.copy(alpha = 0.5f)
+                                color = VoidColor.TextDisabled.copy(
+                                    alpha = 0.5f
+                                )
                             )
                         )
                     }
+
                     innerTextField()
                 }
             }
@@ -592,7 +713,12 @@ private fun InputRowWithVoice(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        val sendButtonColor = if (commandText.isEmpty()) VoidColor.Void700 else VoidColor.Violet
+        val sendButtonColor =
+            if (commandText.isEmpty()) {
+                VoidColor.Void700
+            } else {
+                VoidColor.Violet
+            }
 
         Surface(
             modifier = Modifier.size(36.dp),
@@ -600,9 +726,11 @@ private fun InputRowWithVoice(
             color = sendButtonColor,
             onClick = onSend
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowUp,
+                    imageVector = Icons.Default.KeyboardArrowUp,
                     contentDescription = "Send",
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
@@ -614,7 +742,7 @@ private fun InputRowWithVoice(
 
 @Composable
 private fun DividerLine() {
-    Divider(
+    HorizontalDivider(
         modifier = Modifier.fillMaxWidth(),
         thickness = 1.dp,
         color = VoidColor.Void600
@@ -623,18 +751,24 @@ private fun DividerLine() {
 
 @Composable
 private fun TaskLogWidget(tasks: List<TaskNode>) {
-    Column(modifier = Modifier.heightIn(max = 80.dp)) {
+    Column(
+        modifier = Modifier.heightIn(max = 80.dp)
+    ) {
         tasks.forEachIndexed { index, task ->
-            var visible by remember { mutableStateOf(false) }
+            var visible by remember {
+                mutableStateOf(false)
+            }
 
             LaunchedEffect(Unit) {
-                delay((index * 80).toLong())
+                delay(index * 80L)
                 visible = true
             }
 
             AnimatedVisibility(
                 visible = visible,
-                enter = slideInVertically { -24 } + fadeIn()
+                enter = slideInVertically {
+                    -24
+                } + fadeIn()
             ) {
                 Row(
                     modifier = Modifier
@@ -647,8 +781,14 @@ private fun TaskLogWidget(tasks: List<TaskNode>) {
                         modifier = Modifier
                             .size(6.dp)
                             .background(
-                                color = if (task.result.contains("Error") || task.result.contains("Failed"))
-                                    VoidColor.Red else VoidColor.Green,
+                                color = if (
+                                    task.result.contains("Error") ||
+                                    task.result.contains("Failed")
+                                ) {
+                                    VoidColor.Red
+                                } else {
+                                    VoidColor.Green
+                                },
                                 shape = RoundedCornerShape(3.dp)
                             )
                     )
@@ -684,6 +824,7 @@ private fun TaskLogWidget(tasks: List<TaskNode>) {
 private fun formatRelativeTime(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     val minutes = diff / 60000
+
     return when {
         minutes < 1 -> "now"
         minutes < 60 -> "${minutes}m"
@@ -701,7 +842,9 @@ private fun SuggestionChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         suggestions.forEachIndexed { index, suggestion ->
-            var visible by remember { mutableStateOf(false) }
+            var visible by remember {
+                mutableStateOf(false)
+            }
 
             LaunchedEffect(Unit) {
                 delay(index * 60L)
@@ -710,15 +853,18 @@ private fun SuggestionChips(
 
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(animationSpec = tween(200)) + 
-                        slideInHorizontally(
-                            initialOffsetX = { -it },
-                            animationSpec = tween(200)
-                        )
+                enter = fadeIn(
+                    animationSpec = tween(200)
+                ) +
+                    slideInHorizontally(
+                        initialOffsetX = { -it },
+                        animationSpec = tween(200)
+                    )
             ) {
                 Surface(
-                    modifier = Modifier
-                        .clickable { onSuggestionClick(suggestion) },
+                    modifier = Modifier.clickable {
+                        onSuggestionClick(suggestion)
+                    },
                     shape = RoundedCornerShape(16.dp),
                     color = VoidColor.Void700
                 ) {
