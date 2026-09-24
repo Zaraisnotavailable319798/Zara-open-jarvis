@@ -6,158 +6,210 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.setContent
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.openjarvis.accessibility.JarvisAccessibilityService
 import com.openjarvis.agent.AgentCore
-import com.openjarvis.agent.AgentState
 import com.openjarvis.graphify.GraphifyRepository
 import com.openjarvis.graphify.nodes.TaskNode
 import com.openjarvis.ui.dashboard.DashboardScreen
-import com.openjarvis.ui.settings.SettingsScreen
-import com.openjarvis.ui.theme.OpenJarvisTheme
 
 class MainActivity : ComponentActivity() {
-    
+
     private lateinit var graphifyRepo: GraphifyRepository
     private lateinit var agentCore: AgentCore
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        
+
         graphifyRepo = GraphifyRepository(this)
         agentCore = AgentCore(this)
-        
-        setContent {
-            OpenJarvisTheme {
+
+        val composeView = ComposeView(this)
+
+        composeView.setContent {
+            MaterialTheme {
                 val context = LocalContext.current
-                var recentTasks by remember { mutableStateOf<List<TaskNode>>(emptyList()) }
-                
+                var recentTasks by remember {
+                    mutableStateOf<List<TaskNode>>(emptyList())
+                }
+
                 LaunchedEffect(Unit) {
                     recentTasks = graphifyRepo.getRecentTasks(10)
                 }
-                
+
                 val accessibilityEnabled = isAccessibilityServiceEnabled()
-                val overlayEnabled = Settings.canDrawOverlays(this)
-                
-                val agentState by agentCore.state.collectAsState()
-                
+                val overlayEnabled = Settings.canDrawOverlays(context)
+
+                agentCore.state.collectAsState()
+
                 if (!accessibilityEnabled || !overlayEnabled) {
                     PermissionScreen(
                         accessibilityEnabled = accessibilityEnabled,
                         overlayEnabled = overlayEnabled,
-                        onEnableAccessibility = { startAccessibilitySettings() },
-                        onEnableOverlay = { startOverlaySettings() }
+                        onEnableAccessibility = {
+                            startAccessibilitySettings()
+                        },
+                        onEnableOverlay = {
+                            startOverlaySettings()
+                        }
                     )
                 } else {
                     DashboardScreen(
-                        onStartOverlay = { startOverlayService() },
-                        onOpenSettings = { openSettings() },
+                        onStartOverlay = {
+                            startOverlayService()
+                        },
+                        onOpenSettings = {
+                            openSettings()
+                        },
                         graphifyRepo = graphifyRepo,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
             }
         }
+
+        setContentView(composeView)
     }
-    
+
     private fun isAccessibilityServiceEnabled(): Boolean {
         val enabledServices = Settings.Secure.getString(
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        
-        val componentName = ComponentName(this, JarvisAccessibilityService::class.java)
-        return enabledServices.contains(componentName.flattenToString())
+
+        val componentName = ComponentName(
+            this,
+            JarvisAccessibilityService::class.java
+        )
+
+        return enabledServices.contains(
+            componentName.flattenToString()
+        )
     }
-    
+
     private fun startAccessibilitySettings() {
-        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        startActivity(
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        )
     }
-    
+
     private fun startOverlaySettings() {
-        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, 
-            android.net.Uri.parse("package:$packageName")))
+        startActivity(
+            Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:$packageName")
+            )
+        )
     }
-    
+
     private fun startOverlayService() {
-        startService(Intent(this, OverlayService::class.java))
-        Toast.makeText(this, "Jarvis is active", Toast.LENGTH_SHORT).show()
+        startService(
+            Intent(this, OverlayService::class.java)
+        )
+
+        Toast.makeText(
+            this,
+            "Jarvis is active",
+            Toast.LENGTH_SHORT
+        ).show()
     }
-    
+
     private fun openSettings() {
-        startActivity(Intent(this, SettingsActivity::class.java))
+        startActivity(
+            Intent(this, SettingsActivity::class.java)
+        )
     }
 }
 
-@Composable
+@androidx.compose.runtime.Composable
 fun PermissionScreen(
     accessibilityEnabled: Boolean,
     overlayEnabled: Boolean,
     onEnableAccessibility: () -> Unit,
     onEnableOverlay: () -> Unit
 ) {
-    val primaryColor = com.openjarvis.ui.theme.VoidColor.Violet
-    val onSurfaceColor = com.openjarvis.ui.theme.VoidColor.TextPrimary
-    val onSurfaceVariantColor = com.openjarvis.ui.theme.VoidColor.TextSecondary
-    
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        androidx.compose.material3.Text(
+        Text(
             text = "Permission Required",
-            style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
-            color = onSurfaceColor
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
-        
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
-        
-        androidx.compose.material3.Text(
+
+        Spacer(
+            modifier = Modifier.height(16.dp)
+        )
+
+        Text(
             text = "Open Jarvis needs accessibility and overlay permissions to control your device.",
-            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-            color = onSurfaceVariantColor,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
-        
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(32.dp))
-        
+
+        Spacer(
+            modifier = Modifier.height(32.dp)
+        )
+
         if (!accessibilityEnabled) {
-            androidx.compose.material3.Button(
+            Button(
                 onClick = onEnableAccessibility,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                androidx.compose.material3.Text("Enable Accessibility Service")
+                Text("Enable Accessibility Service")
             }
-            
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+
+            Spacer(
+                modifier = Modifier.height(16.dp)
+            )
         }
-        
+
         if (!overlayEnabled) {
-            androidx.compose.material3.Button(
+            Button(
                 onClick = onEnableOverlay,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                androidx.compose.material3.Text("Enable Overlay Permission")
+                Text("Enable Overlay Permission")
             }
         }
-        
+
         if (accessibilityEnabled && overlayEnabled) {
-            androidx.compose.material3.Text(
+            Text(
                 text = "Jarvis is active",
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                color = primaryColor
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
