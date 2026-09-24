@@ -7,8 +7,14 @@ import kotlinx.coroutines.delay
 
 class AIAppInteractor(private val context: Context) {
 
-    private val screenReader = ScreenReader(context)
     private val workingMemory = TaskWorkingMemory()
+
+    private fun getScreenReader(): ScreenReader? {
+        val service = JarvisAccessibilityService.instance
+            ?: return null
+
+        return ScreenReader(service)
+    }
 
     fun openAIApp(meta: AIAppMeta): Boolean {
         val service = JarvisAccessibilityService.instance
@@ -125,7 +131,8 @@ class AIAppInteractor(private val context: Context) {
             return ""
         }
 
-        val previousScreen = screenReader.extractAllText()
+        val previousScreen =
+            getScreenReader()?.extractAllText() ?: ""
 
         delay(300)
 
@@ -159,7 +166,8 @@ class AIAppInteractor(private val context: Context) {
         ) {
             delay(1000)
 
-            val currentText = screenReader.extractAllText()
+            val currentText =
+                getScreenReader()?.extractAllText() ?: ""
 
             if (currentText.isBlank()) {
                 continue
@@ -189,6 +197,9 @@ class AIAppInteractor(private val context: Context) {
     }
 
     fun extractResponse(meta: AIAppMeta): String {
+        val screenReader = getScreenReader()
+            ?: return ""
+
         return when (meta.responseExtraction) {
             ResponseExtraction.SCREEN_TEXT ->
                 screenReader.extractAllText()
@@ -197,21 +208,25 @@ class AIAppInteractor(private val context: Context) {
                 screenReader.extractAllText()
 
             ResponseExtraction.COPY_BUTTON ->
-                tryCopyFromUI()
+                tryCopyFromUI(screenReader)
 
             ResponseExtraction.SHARE_MENU ->
-                tryShareFromUI()
+                tryShareFromUI(screenReader)
         }
     }
 
     fun getWorkingMemory(): TaskWorkingMemory =
         workingMemory
 
-    private fun tryCopyFromUI(): String {
+    private fun tryCopyFromUI(
+        screenReader: ScreenReader
+    ): String {
         return screenReader.extractAllText()
     }
 
-    private fun tryShareFromUI(): String {
+    private fun tryShareFromUI(
+        screenReader: ScreenReader
+    ): String {
         return screenReader.extractAllText()
     }
 }
