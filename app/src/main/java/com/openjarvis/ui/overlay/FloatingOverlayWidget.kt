@@ -1,3 +1,5 @@
+Worked for 15s
+
 package com.openjarvis.ui.overlay
 
 import androidx.compose.animation.AnimatedContent
@@ -10,12 +12,9 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -36,6 +35,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -92,7 +92,6 @@ fun FloatingOverlayWidget(
     var commandText by remember { mutableStateOf("") }
     var hasAnimatedOnce by remember { mutableStateOf(false) }
     var placeholderText by remember { mutableStateOf("") }
-    var isRecording by remember { mutableStateOf(false) }
 
     val voiceState by voiceManager?.state?.collectAsState()
         ?: remember { mutableStateOf(VoiceState.Idle) }
@@ -109,8 +108,6 @@ fun FloatingOverlayWidget(
     }
 
     LaunchedEffect(voiceState) {
-        isRecording = voiceState is VoiceState.Recording
-
         if (voiceState is VoiceState.Result) {
             commandText = (voiceState as VoiceState.Result).text
         }
@@ -118,52 +115,6 @@ fun FloatingOverlayWidget(
 
     AnimatedContent(
         targetState = isExpanded,
-        transitionSpec = {
-            if (targetState) {
-                (
-                    expandHorizontally(
-                        animationSpec = spring(
-                            stiffness = Spring.StiffnessMedium,
-                            dampingRatio = 0.8f
-                        )
-                    ) +
-                        expandVertically(
-                            animationSpec = spring(
-                                stiffness = 260f,
-                                dampingRatio = 0.8f
-                            )
-                        ) +
-                        fadeIn(
-                            animationSpec = tween(
-                                150,
-                                delayMillis = 240
-                            )
-                        )
-                    ) togetherWith fadeOut(
-                    animationSpec = tween(100)
-                )
-            } else {
-                (
-                    shrinkHorizontally(
-                        animationSpec = spring(
-                            stiffness = Spring.StiffnessMedium,
-                            dampingRatio = 0.8f
-                        )
-                    ) +
-                        shrinkVertically(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessMedium,
-                                dampingRatio = 0.8f
-                            )
-                        ) +
-                        fadeOut(
-                            animationSpec = tween(100)
-                        )
-                    ) togetherWith fadeIn(
-                    animationSpec = tween(100)
-                )
-            }
-        },
         label = "overlay_expand"
     ) { expanded ->
         if (expanded) {
@@ -234,7 +185,9 @@ private fun CollapsedPill(
         label = "glow_alpha"
     )
 
-    val statusScale by infiniteTransition.animateFloat(
+    val statusScale by rememberInfiniteTransition(
+        label = "status"
+    ).animateFloat(
         initialValue = 0.75f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -575,30 +528,14 @@ private fun InputRowWithVoice(
     val isRecording = voiceState is VoiceState.Recording
     val isTranscribing = voiceState is VoiceState.Transcribing
 
-    val scale by animateFloatAsState(
-        targetValue = if (isRecording) 1.15f else 1f,
-        animationSpec = spring(
-            stiffness = 400f,
-            dampingRatio = 0.5f
-        ),
-        label = "voice_scale"
-    )
+    val scale = if (isRecording) 1.15f else 1f
+    val glowAlpha = if (isRecording) 0.6f else 0f
 
-    val glowAlpha by animateFloatAsState(
-        targetValue = if (isRecording) 0.6f else 0f,
-        animationSpec = tween(200),
-        label = "voice_glow"
-    )
-
-    val bgColor by animateColorAsState(
-        targetValue = when {
-            isRecording -> VoidColor.Red
-            isTranscribing -> VoidColor.Amber
-            else -> VoidColor.Void700
-        },
-        animationSpec = tween(200),
-        label = "voice_color"
-    )
+    val bgColor = when {
+        isRecording -> VoidColor.Red
+        isTranscribing -> VoidColor.Amber
+        else -> VoidColor.Void700
+    }
 
     Row(
         modifier = Modifier
@@ -736,11 +673,10 @@ private fun InputRowWithVoice(
 
 @Composable
 private fun DividerLine() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(VoidColor.Void600)
+    HorizontalDivider(
+        modifier = Modifier.fillMaxWidth(),
+        thickness = 1.dp,
+        color = VoidColor.Void600
     )
 }
 
