@@ -1,8 +1,10 @@
 package com.openjarvis.ui.dashboard
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -36,7 +38,7 @@ import com.openjarvis.graphify.nodes.AppNode
 import com.openjarvis.graphify.nodes.TaskNode
 import kotlinx.coroutines.delay
 
-private object VoidColor {
+private object DashboardColors {
     val Void950 = Color(0xFF08060D)
     val Void900 = Color(0xFF0F0B18)
     val Void800 = Color(0xFF171022)
@@ -52,6 +54,7 @@ private object VoidColor {
     val TextDisabled = Color(0xFF8E849F)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onStartOverlay: () -> Unit,
@@ -88,7 +91,7 @@ fun DashboardScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(VoidColor.Void950)
+            .background(DashboardColors.Void950)
     ) {
         OrbBackground()
 
@@ -105,24 +108,15 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            StatsRow(
-                tasks = recentTasks,
-                alpha = statsAlpha
-            )
+            StatsRow(tasks = recentTasks, alpha = statsAlpha)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            RecentTasksSection(
-                tasks = recentTasks,
-                alpha = tasksAlpha
-            )
+            RecentTasksSection(tasks = recentTasks, alpha = tasksAlpha)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            QuickAppsSection(
-                apps = mostUsedApps,
-                alpha = appsAlpha
-            )
+            QuickAppsSection(apps = mostUsedApps, alpha = appsAlpha)
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -136,32 +130,28 @@ fun DashboardScreen(
 
 @Composable
 private fun OrbBackground() {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "orb")
 
     val offsetY by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = -20f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 8000,
-                easing = FastOutSlowInEasing
-            ),
+            animation = tween(8000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "orb_y"
     )
 
-    Canvas(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(
-            size.width / 2f,
+            size.width / 2,
             200.dp.toPx() + offsetY.dp.toPx()
         )
 
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    VoidColor.Violet.copy(alpha = 0.06f),
+                    DashboardColors.Violet.copy(alpha = 0.06f),
                     Color.Transparent
                 ),
                 center = center,
@@ -174,16 +164,14 @@ private fun OrbBackground() {
 }
 
 @Composable
-private fun HeroSection(
-    isSystemActive: Boolean
-) {
+private fun HeroSection(isSystemActive: Boolean) {
     Column {
         Surface(
             shape = RoundedCornerShape(999.dp),
-            color = VoidColor.Void800,
+            color = DashboardColors.Void800,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                VoidColor.BorderGlow
+                DashboardColors.BorderGlow
             )
         ) {
             Text(
@@ -193,7 +181,7 @@ private fun HeroSection(
                     fontWeight = FontWeight(500),
                     fontSize = 10.sp,
                     letterSpacing = 4.sp,
-                    color = VoidColor.Violet
+                    color = DashboardColors.Violet
                 ),
                 modifier = Modifier.padding(
                     horizontal = 12.dp,
@@ -207,7 +195,7 @@ private fun HeroSection(
         val annotatedText = buildAnnotatedString {
             withStyle(
                 androidx.compose.ui.text.SpanStyle(
-                    color = VoidColor.TextPrimary
+                    color = DashboardColors.TextPrimary
                 )
             ) {
                 append("OPEN")
@@ -219,8 +207,8 @@ private fun HeroSection(
                 androidx.compose.ui.text.SpanStyle(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            VoidColor.Violet,
-                            VoidColor.Cyan
+                            DashboardColors.Violet,
+                            DashboardColors.Cyan
                         )
                     )
                 )
@@ -245,7 +233,7 @@ private fun HeroSection(
                 fontFamily = FontFamily.Default,
                 fontWeight = FontWeight(400),
                 fontSize = 13.sp,
-                color = VoidColor.TextDisabled
+                color = DashboardColors.TextDisabled
             )
         )
 
@@ -256,40 +244,42 @@ private fun HeroSection(
 }
 
 @Composable
-private fun StatusBadge(
-    isActive: Boolean
-) {
-    val infiniteTransition = rememberInfiniteTransition()
+private fun StatusBadge(isActive: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "badge")
 
     val dotScale by infiniteTransition.animateFloat(
         initialValue = 0.7f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = 1500,
+                1500,
                 easing = FastOutSlowInEasing
             ),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "dot_scale"
     )
 
-    val bgColor = if (isActive) {
-        VoidColor.Green.copy(alpha = 0.08f)
+    val colors = if (isActive) {
+        listOf(
+            DashboardColors.Green.copy(alpha = 0.08f),
+            DashboardColors.Green.copy(alpha = 0.25f),
+            DashboardColors.Green,
+            DashboardColors.Green
+        )
     } else {
-        VoidColor.Red.copy(alpha = 0.08f)
+        listOf(
+            DashboardColors.Red.copy(alpha = 0.08f),
+            DashboardColors.Red.copy(alpha = 0.25f),
+            DashboardColors.Red,
+            DashboardColors.Red
+        )
     }
 
-    val borderColor = if (isActive) {
-        VoidColor.Green.copy(alpha = 0.25f)
-    } else {
-        VoidColor.Red.copy(alpha = 0.25f)
-    }
-
-    val textColor = if (isActive) {
-        VoidColor.Green
-    } else {
-        VoidColor.Red
-    }
+    val bgColor = colors[0]
+    val borderColor = colors[1]
+    val textColor = colors[2]
+    val dotColor = colors[3]
 
     Surface(
         shape = RoundedCornerShape(999.dp),
@@ -311,10 +301,8 @@ private fun StatusBadge(
                     .size(6.dp)
                     .scale(if (isActive) dotScale else 1f)
             ) {
-                Canvas(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    drawCircle(color = textColor)
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(color = dotColor)
                 }
             }
 
@@ -345,9 +333,10 @@ private fun StatsRow(
     val animatedCount by animateIntAsState(
         targetValue = tasks.size.coerceAtLeast(0),
         animationSpec = tween(
-            durationMillis = 500,
+            500,
             easing = EaseOutQuart
-        )
+        ),
+        label = "count"
     )
 
     Column(
@@ -389,10 +378,10 @@ private fun StatCard(
     Surface(
         modifier = modifier.height(72.dp),
         shape = RoundedCornerShape(14.dp),
-        color = VoidColor.Void800,
+        color = DashboardColors.Void800,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            VoidColor.BorderSubtle
+            DashboardColors.BorderSubtle
         )
     ) {
         Column(
@@ -405,7 +394,7 @@ private fun StatCard(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(700),
                     fontSize = 22.sp,
-                    color = VoidColor.TextPrimary
+                    color = DashboardColors.TextPrimary
                 )
             )
 
@@ -415,7 +404,7 @@ private fun StatCard(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(400),
                     fontSize = 11.sp,
-                    color = VoidColor.TextDisabled
+                    color = DashboardColors.TextDisabled
                 )
             )
         }
@@ -443,7 +432,7 @@ private fun RecentTasksSection(
                     fontWeight = FontWeight(600),
                     fontSize = 10.sp,
                     letterSpacing = 3.sp,
-                    color = VoidColor.TextDisabled
+                    color = DashboardColors.TextDisabled
                 )
             )
 
@@ -453,7 +442,7 @@ private fun RecentTasksSection(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(500),
                     fontSize = 11.sp,
-                    color = VoidColor.Violet
+                    color = DashboardColors.Violet
                 )
             )
         }
@@ -467,7 +456,7 @@ private fun RecentTasksSection(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(400),
                     fontSize = 13.sp,
-                    color = VoidColor.TextDisabled
+                    color = DashboardColors.TextDisabled
                 )
             )
         } else {
@@ -480,30 +469,26 @@ private fun RecentTasksSection(
 }
 
 @Composable
-private fun TaskCard(
-    task: TaskNode
-) {
+private fun TaskCard(task: TaskNode) {
     val isSuccess =
         task.result.contains("Opened") ||
         task.result.contains("Success")
 
     val outcomeColor =
-        if (isSuccess) VoidColor.Green else VoidColor.Red
+        if (isSuccess) DashboardColors.Green else DashboardColors.Red
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp),
         shape = RoundedCornerShape(16.dp),
-        color = VoidColor.Void900,
+        color = DashboardColors.Void900,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            VoidColor.BorderSubtle
+            DashboardColors.BorderSubtle
         )
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Row(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -532,7 +517,7 @@ private fun TaskCard(
                         style = TextStyle(
                             fontFamily = FontFamily.Monospace,
                             fontSize = 12.sp,
-                            color = VoidColor.TextPrimary
+                            color = DashboardColors.TextPrimary
                         ),
                         maxLines = 1,
                         modifier = Modifier.weight(1f)
@@ -543,7 +528,7 @@ private fun TaskCard(
                         style = TextStyle(
                             fontFamily = FontFamily.Default,
                             fontSize = 10.sp,
-                            color = VoidColor.TextDisabled
+                            color = DashboardColors.TextDisabled
                         )
                     )
                 }
@@ -562,7 +547,7 @@ private fun TaskCard(
                         style = TextStyle(
                             fontFamily = FontFamily.Default,
                             fontSize = 11.sp,
-                            color = VoidColor.TextDisabled
+                            color = DashboardColors.TextDisabled
                         )
                     )
 
@@ -570,7 +555,7 @@ private fun TaskCard(
 
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = outcomeColor.copy(alpha = 0.12f)
+                        color = DashboardColors.Green.copy(alpha = 0.12f)
                     ) {
                         Text(
                             text = if (isSuccess) "done" else "failed",
@@ -593,17 +578,15 @@ private fun TaskCard(
 }
 
 @Composable
-private fun AppInitialBadge(
-    label: String
-) {
+private fun AppInitialBadge(label: String) {
     val colors = listOf(
-        VoidColor.Violet,
-        VoidColor.Cyan,
-        VoidColor.Green,
-        VoidColor.Amber
+        DashboardColors.Violet,
+        DashboardColors.Cyan,
+        DashboardColors.Green,
+        DashboardColors.Amber
     )
 
-    val colorIndex = kotlin.math.abs(label.hashCode()) % colors.size
+    val colorIndex = label.hashCode().mod(colors.size)
     val bgColor = colors[colorIndex]
     val initial = label.firstOrNull()?.uppercaseChar() ?: 'J'
 
@@ -643,7 +626,7 @@ private fun QuickAppsSection(
                 fontWeight = FontWeight(600),
                 fontSize = 10.sp,
                 letterSpacing = 3.sp,
-                color = VoidColor.TextDisabled
+                color = DashboardColors.TextDisabled
             )
         )
 
@@ -655,7 +638,7 @@ private fun QuickAppsSection(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.height(220.dp)
         ) {
-            items(apps) { app ->
+            items(apps.ifEmpty { emptyList() }) { app ->
                 AppTile(app = app)
             }
         }
@@ -663,18 +646,16 @@ private fun QuickAppsSection(
 }
 
 @Composable
-private fun AppTile(
-    app: AppNode
-) {
+private fun AppTile(app: AppNode) {
     Surface(
         modifier = Modifier
             .aspectRatio(1f)
             .height(100.dp),
         shape = RoundedCornerShape(20.dp),
-        color = VoidColor.Void900,
+        color = DashboardColors.Void900,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            VoidColor.BorderSubtle
+            DashboardColors.BorderSubtle
         )
     ) {
         Column(
@@ -692,7 +673,7 @@ private fun AppTile(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(500),
                     fontSize = 12.sp,
-                    color = VoidColor.TextSecondary
+                    color = DashboardColors.TextSecondary
                 )
             )
         }
@@ -706,14 +687,14 @@ private fun BottomNavBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = VoidColor.Void900
+        color = DashboardColors.Void900
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(VoidColor.BorderSubtle)
+                    .background(DashboardColors.BorderSubtle)
             )
 
             Row(
@@ -746,7 +727,7 @@ private fun BottomNavBar(
                         if (isSelected) {
                             Surface(
                                 shape = RoundedCornerShape(24.dp),
-                                color = VoidColor.Violet.copy(alpha = 0.08f)
+                                color = DashboardColors.Violet.copy(alpha = 0.08f)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(
@@ -758,7 +739,7 @@ private fun BottomNavBar(
                                     Icon(
                                         imageVector = Icons.Filled.Task,
                                         contentDescription = item,
-                                        tint = VoidColor.Violet,
+                                        tint = DashboardColors.Violet,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -767,7 +748,7 @@ private fun BottomNavBar(
                             Icon(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = item,
-                                tint = VoidColor.TextDisabled,
+                                tint = DashboardColors.TextDisabled,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -778,9 +759,7 @@ private fun BottomNavBar(
     }
 }
 
-private fun formatRelativeTime(
-    timestamp: Long
-): String {
+private fun formatRelativeTime(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     val minutes = diff / 60000
 
