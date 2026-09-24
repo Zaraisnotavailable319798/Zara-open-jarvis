@@ -365,36 +365,39 @@ fun SettingsScreen(
 private fun SettingsHeader(
     onNavigateBack: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(88.dp)
-            .padding(horizontal = 24.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onNavigateBack) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowLeft,
-                contentDescription = "Back",
-                tint = SettingsColors.TextSecondary
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(88.dp)
+                .padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowLeft,
+                    contentDescription = "Back",
+                    tint = SettingsColors.TextSecondary
+                )
+            }
+
+            Text(
+                text = "Settings",
+                style = TextStyle(
+                    fontWeight = FontWeight(600),
+                    fontSize = 20.sp,
+                    color = SettingsColors.TextPrimary
+                )
             )
         }
 
-        Text(
-            text = "Settings",
-            style = TextStyle(
-                fontWeight = FontWeight(600),
-                fontSize = 20.sp,
-                color = SettingsColors.TextPrimary
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(SettingsColors.BorderSubtle)
         )
     }
-
-    Divider(
-        modifier = Modifier.fillMaxWidth(),
-        thickness = 1.dp,
-        color = SettingsColors.BorderSubtle
-    )
 }
 
 @Composable
@@ -933,9 +936,11 @@ private fun AboutSection() {
                 value = "M1.0 (build 1)"
             )
 
-            Divider(
-                thickness = 1.dp,
-                color = SettingsColors.BorderSubtle
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(SettingsColors.BorderSubtle)
             )
 
             AboutRow(
@@ -943,9 +948,11 @@ private fun AboutSection() {
                 value = "MIT Open Source"
             )
 
-            Divider(
-                thickness = 1.dp,
-                color = SettingsColors.BorderSubtle
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(SettingsColors.BorderSubtle)
             )
 
             AboutRow(
@@ -954,9 +961,11 @@ private fun AboutSection() {
                 isLink = true
             )
 
-            Divider(
-                thickness = 1.dp,
-                color = SettingsColors.BorderSubtle
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(SettingsColors.BorderSubtle)
             )
 
             Text(
