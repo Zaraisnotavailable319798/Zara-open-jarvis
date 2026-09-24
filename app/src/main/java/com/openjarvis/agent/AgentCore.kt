@@ -41,14 +41,14 @@ class AgentCore(private val context: Context) {
     private val taskRouter = TaskRouter(context)
     private val appAnalyzer = AppAnalyzer(context)
 
-    /*
-     * AIAppInteractor requires the active AccessibilityService.
-     * Resolve it only when needed because the service may not exist
-     * when AgentCore is created.
-     */
     private val aiAppInteractor: AIAppInteractor?
-        get() = JarvisAccessibilityService.instance?.let {
-            AIAppInteractor(it)
+        get() {
+            val service =
+                JarvisAccessibilityService.instance
+                    as? JarvisAccessibilityService
+                    ?: return null
+
+            return AIAppInteractor(service)
         }
 
     private var workingMemory = TaskWorkingMemory()
@@ -209,9 +209,7 @@ RULES:
                             )
                             .replace(
                                 "{GRAPHIFY_CONTEXT}",
-                                if (
-                                    memoryContext.isBlank()
-                                ) {
+                                if (memoryContext.isBlank()) {
                                     "No recent tasks"
                                 } else {
                                     memoryContext
@@ -281,9 +279,7 @@ RULES:
                                     retry
                                         .getOrNull()
                                         ?.let {
-                                            ActionJsonParser.parse(
-                                                it
-                                            )
+                                            ActionJsonParser.parse(it)
                                         }
                                 }
 
@@ -309,9 +305,7 @@ RULES:
                                     "executing ${actions.size} actions..."
                                 )
 
-                            executeActions(
-                                actions
-                            )
+                            executeActions(actions)
 
                             graphifyRepo.logTask(
                                 finalCommand,
@@ -346,9 +340,7 @@ RULES:
                                         "Request timed out"
 
                                     error.message
-                                        ?.contains(
-                                            "Unable to resolve"
-                                        ) == true ->
+                                        ?.contains("Unable to resolve") == true ->
                                         "Network error — check connection"
 
                                     else ->
@@ -409,9 +401,7 @@ RULES:
                             packageName,
                             0
                         )
-
                         true
-
                     } catch (_: Exception) {
                         false
                     }
@@ -735,35 +725,23 @@ RULES:
         when (direction) {
 
             "up" -> {
-                startY =
-                    centerY + distance / 2f
-
-                endY =
-                    centerY - distance / 2f
+                startY = centerY + distance / 2f
+                endY = centerY - distance / 2f
             }
 
             "down" -> {
-                startY =
-                    centerY - distance / 2f
-
-                endY =
-                    centerY + distance / 2f
+                startY = centerY - distance / 2f
+                endY = centerY + distance / 2f
             }
 
             "left" -> {
-                startX =
-                    centerX + distance / 2f
-
-                endX =
-                    centerX - distance / 2f
+                startX = centerX + distance / 2f
+                endX = centerX - distance / 2f
             }
 
             "right" -> {
-                startX =
-                    centerX - distance / 2f
-
-                endX =
-                    centerX + distance / 2f
+                startX = centerX - distance / 2f
+                endX = centerX + distance / 2f
             }
 
             else ->
@@ -1040,16 +1018,8 @@ RULES:
 
         val path =
             Path().apply {
-
-                moveTo(
-                    startX,
-                    startY
-                )
-
-                lineTo(
-                    endX,
-                    endY
-                )
+                moveTo(startX, startY)
+                lineTo(endX, endY)
             }
 
         val stroke =
@@ -1112,7 +1082,6 @@ RULES:
             }
 
             for (i in 0 until node.childCount) {
-
                 node.getChild(i)?.let { child ->
                     queue.add(child)
                 }
