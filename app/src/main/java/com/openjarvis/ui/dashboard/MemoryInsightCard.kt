@@ -3,7 +3,8 @@ package com.openjarvis.ui.dashboard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,8 +17,14 @@ import com.openjarvis.graphify.GraphifyRepository
 import com.openjarvis.graphify.nodes.AppNode
 import com.openjarvis.graphify.nodes.ContactNode
 import com.openjarvis.graphify.nodes.ProviderNode
-import com.openjarvis.ui.theme.VoidColor
 import kotlinx.coroutines.flow.first
+
+private object VoidColor {
+    val Void800 = androidx.compose.ui.graphics.Color(0xFF171022)
+    val BorderSubtle = androidx.compose.ui.graphics.Color(0x332E2440)
+    val TextPrimary = androidx.compose.ui.graphics.Color(0xFFF8F5FF)
+    val TextDisabled = androidx.compose.ui.graphics.Color(0xFF8E849F)
+}
 
 @Composable
 fun MemoryInsightCard(
@@ -30,17 +37,41 @@ fun MemoryInsightCard(
     var topProvider by remember { mutableStateOf<ProviderNode?>(null) }
 
     LaunchedEffect(Unit) {
-        patternCount = graphifyRepo.getActivePatternCountFlow().first()
-        topApp = graphifyRepo.getTopAppsFlow(1).first().firstOrNull()
-        topContact = graphifyRepo.getTopContactFlow().first().firstOrNull()
-        topProvider = graphifyRepo.getTopProviderFlow().first().firstOrNull()
+        try {
+            patternCount = graphifyRepo
+                .getActivePatternCountFlow()
+                .first()
+
+            topApp = graphifyRepo
+                .getTopAppsFlow(1)
+                .first()
+                .firstOrNull()
+
+            topContact = graphifyRepo
+                .getTopContactFlow()
+                .first()
+                .firstOrNull()
+
+            topProvider = graphifyRepo
+                .getTopProviderFlow()
+                .first()
+                .firstOrNull()
+        } catch (_: Exception) {
+            patternCount = 0
+            topApp = null
+            topContact = null
+            topProvider = null
+        }
     }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = VoidColor.Void800,
-        border = androidx.compose.foundation.BorderStroke(1.dp, VoidColor.BorderSubtle)
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            VoidColor.BorderSubtle
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -67,16 +98,19 @@ fun MemoryInsightCard(
                     value = patternCount.toString(),
                     modifier = Modifier.weight(1f)
                 )
+
                 InsightItem(
                     label = "Top App",
                     value = topApp?.label ?: "-",
                     modifier = Modifier.weight(1f)
                 )
+
                 InsightItem(
                     label = "Contact",
                     value = topContact?.name ?: "-",
                     modifier = Modifier.weight(1f)
                 )
+
                 InsightItem(
                     label = "Provider",
                     value = topProvider?.providerName ?: "-",
@@ -106,7 +140,9 @@ private fun InsightItem(
                 color = VoidColor.TextPrimary
             )
         )
+
         Spacer(modifier = Modifier.height(2.dp))
+
         Text(
             text = label,
             style = TextStyle(
