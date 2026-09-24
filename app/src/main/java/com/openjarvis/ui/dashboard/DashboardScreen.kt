@@ -1,10 +1,10 @@
+Worked for 8s
+
 package com.openjarvis.ui.dashboard
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -54,7 +54,6 @@ private object VoidColor {
     val TextDisabled = Color(0xFF8E849F)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onStartOverlay: () -> Unit,
@@ -108,15 +107,24 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            StatsRow(tasks = recentTasks, alpha = statsAlpha)
+            StatsRow(
+                tasks = recentTasks,
+                alpha = statsAlpha
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            RecentTasksSection(tasks = recentTasks, alpha = tasksAlpha)
+            RecentTasksSection(
+                tasks = recentTasks,
+                alpha = tasksAlpha
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            QuickAppsSection(apps = mostUsedApps, alpha = appsAlpha)
+            QuickAppsSection(
+                apps = mostUsedApps,
+                alpha = appsAlpha
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -130,21 +138,25 @@ fun DashboardScreen(
 
 @Composable
 private fun OrbBackground() {
-    val infiniteTransition = rememberInfiniteTransition(label = "orb")
+    val infiniteTransition = rememberInfiniteTransition()
 
     val offsetY by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = -20f,
         animationSpec = infiniteRepeatable(
-            animation = tween(8000, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = 8000,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
-        ),
-        label = "orb_y"
+        )
     )
 
-    Canvas(modifier = Modifier.fillMaxSize()) {
+    Canvas(
+        modifier = Modifier.fillMaxSize()
+    ) {
         val center = Offset(
-            size.width / 2,
+            size.width / 2f,
             200.dp.toPx() + offsetY.dp.toPx()
         )
 
@@ -164,7 +176,9 @@ private fun OrbBackground() {
 }
 
 @Composable
-private fun HeroSection(isSystemActive: Boolean) {
+private fun HeroSection(
+    isSystemActive: Boolean
+) {
     Column {
         Surface(
             shape = RoundedCornerShape(999.dp),
@@ -244,42 +258,40 @@ private fun HeroSection(isSystemActive: Boolean) {
 }
 
 @Composable
-private fun StatusBadge(isActive: Boolean) {
-    val infiniteTransition = rememberInfiniteTransition(label = "badge")
+private fun StatusBadge(
+    isActive: Boolean
+) {
+    val infiniteTransition = rememberInfiniteTransition()
 
     val dotScale by infiniteTransition.animateFloat(
         initialValue = 0.7f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(
-                1500,
+                durationMillis = 1500,
                 easing = FastOutSlowInEasing
             ),
             repeatMode = RepeatMode.Reverse
-        ),
-        label = "dot_scale"
+        )
     )
 
-    val colors = if (isActive) {
-        listOf(
-            VoidColor.Green.copy(alpha = 0.08f),
-            VoidColor.Green.copy(alpha = 0.25f),
-            VoidColor.Green,
-            VoidColor.Green
-        )
+    val bgColor = if (isActive) {
+        VoidColor.Green.copy(alpha = 0.08f)
     } else {
-        listOf(
-            VoidColor.Red.copy(alpha = 0.08f),
-            VoidColor.Red.copy(alpha = 0.25f),
-            VoidColor.Red,
-            VoidColor.Red
-        )
+        VoidColor.Red.copy(alpha = 0.08f)
     }
 
-    val bgColor = colors[0]
-    val borderColor = colors[1]
-    val textColor = colors[2]
-    val dotColor = colors[3]
+    val borderColor = if (isActive) {
+        VoidColor.Green.copy(alpha = 0.25f)
+    } else {
+        VoidColor.Red.copy(alpha = 0.25f)
+    }
+
+    val textColor = if (isActive) {
+        VoidColor.Green
+    } else {
+        VoidColor.Red
+    }
 
     Surface(
         shape = RoundedCornerShape(999.dp),
@@ -301,8 +313,10 @@ private fun StatusBadge(isActive: Boolean) {
                     .size(6.dp)
                     .scale(if (isActive) dotScale else 1f)
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawCircle(color = dotColor)
+                Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    drawCircle(color = textColor)
                 }
             }
 
@@ -333,10 +347,9 @@ private fun StatsRow(
     val animatedCount by animateIntAsState(
         targetValue = tasks.size.coerceAtLeast(0),
         animationSpec = tween(
-            500,
+            durationMillis = 500,
             easing = EaseOutQuart
-        ),
-        label = "count"
+        )
     )
 
     Column(
@@ -469,7 +482,9 @@ private fun RecentTasksSection(
 }
 
 @Composable
-private fun TaskCard(task: TaskNode) {
+private fun TaskCard(
+    task: TaskNode
+) {
     val isSuccess =
         task.result.contains("Opened") ||
         task.result.contains("Success")
@@ -488,7 +503,9 @@ private fun TaskCard(task: TaskNode) {
             VoidColor.BorderSubtle
         )
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -555,7 +572,7 @@ private fun TaskCard(task: TaskNode) {
 
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = VoidColor.Green.copy(alpha = 0.12f)
+                        color = outcomeColor.copy(alpha = 0.12f)
                     ) {
                         Text(
                             text = if (isSuccess) "done" else "failed",
@@ -578,7 +595,9 @@ private fun TaskCard(task: TaskNode) {
 }
 
 @Composable
-private fun AppInitialBadge(label: String) {
+private fun AppInitialBadge(
+    label: String
+) {
     val colors = listOf(
         VoidColor.Violet,
         VoidColor.Cyan,
@@ -586,7 +605,7 @@ private fun AppInitialBadge(label: String) {
         VoidColor.Amber
     )
 
-    val colorIndex = label.hashCode().mod(colors.size)
+    val colorIndex = kotlin.math.abs(label.hashCode()) % colors.size
     val bgColor = colors[colorIndex]
     val initial = label.firstOrNull()?.uppercaseChar() ?: 'J'
 
@@ -638,7 +657,7 @@ private fun QuickAppsSection(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.height(220.dp)
         ) {
-            items(apps.ifEmpty { emptyList() }) { app ->
+            items(apps) { app ->
                 AppTile(app = app)
             }
         }
@@ -646,7 +665,9 @@ private fun QuickAppsSection(
 }
 
 @Composable
-private fun AppTile(app: AppNode) {
+private fun AppTile(
+    app: AppNode
+) {
     Surface(
         modifier = Modifier
             .aspectRatio(1f)
@@ -690,10 +711,11 @@ private fun BottomNavBar(
         color = VoidColor.Void900
     ) {
         Column {
-            HorizontalDivider(
-                modifier = Modifier.fillMaxWidth(),
-                thickness = 1.dp,
-                color = VoidColor.BorderSubtle
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(VoidColor.BorderSubtle)
             )
 
             Row(
@@ -758,7 +780,9 @@ private fun BottomNavBar(
     }
 }
 
-private fun formatRelativeTime(timestamp: Long): String {
+private fun formatRelativeTime(
+    timestamp: Long
+): String {
     val diff = System.currentTimeMillis() - timestamp
     val minutes = diff / 60000
 
