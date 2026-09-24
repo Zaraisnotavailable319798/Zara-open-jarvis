@@ -1,5 +1,3 @@
-Worked for 8s
-
 package com.openjarvis.ui.dashboard
 
 import androidx.compose.animation.core.*
