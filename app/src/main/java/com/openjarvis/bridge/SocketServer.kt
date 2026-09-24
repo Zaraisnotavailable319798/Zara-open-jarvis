@@ -42,7 +42,7 @@ class SocketServer(
     private fun isAuthorized(): Boolean {
         return try {
             Process.myUid() in allowedUids
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -94,7 +94,7 @@ class SocketServer(
                     scope.launch {
                         handleClient(client)
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     if (isRunning) {
                         delay(100)
                     }
@@ -107,74 +107,75 @@ class SocketServer(
         }
     }
 
-    private suspend fun handleClient(clientSocket: Socket) =
-        withContext(Dispatchers.IO) {
+    private suspend fun handleClient(
+        clientSocket: Socket
+    ) = withContext(Dispatchers.IO) {
+        try {
+            val reader = BufferedReader(
+                InputStreamReader(clientSocket.getInputStream())
+            )
+
+            val writer = PrintWriter(
+                clientSocket.getOutputStream(),
+                true
+            )
+
+            val line = reader.readLine()
+
+            if (line.isNullOrBlank()) {
+                writer.println(
+                    createErrorResponse("", "empty request")
+                )
+                return@withContext
+            }
+
+            if (line.length > MAX_COMMAND_LENGTH) {
+                writer.println(
+                    createErrorResponse("", "request too long")
+                )
+                return@withContext
+            }
+
+            if (!isAuthorized()) {
+                writer.println(
+                    createErrorResponse("", "unauthorized")
+                )
+                return@withContext
+            }
+
+            val request = parseRequest(line)
+
+            if (request == null) {
+                writer.println(
+                    createErrorResponse("", "invalid JSON")
+                )
+                return@withContext
+            }
+
+            val (requestId, cmd) = request
+
+            when (cmd.lowercase()) {
+                "status" -> handleStatus(writer, requestId)
+                "history" -> handleHistory(writer, requestId)
+                "providers" -> handleProviders(writer, requestId)
+                "memory" -> handleMemory(writer, requestId)
+                else -> handleCommand(
+                    writer,
+                    requestId,
+                    cmd
+                )
+            }
+
+            writer.flush()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
             try {
-                val reader = BufferedReader(
-                    InputStreamReader(clientSocket.getInputStream())
-                )
-
-                val writer = PrintWriter(
-                    clientSocket.getOutputStream(),
-                    true
-                )
-
-                val line = reader.readLine()
-
-                if (line.isNullOrBlank()) {
-                    writer.println(
-                        createErrorResponse("", "empty request")
-                    )
-                    return@withContext
-                }
-
-                if (line.length > MAX_COMMAND_LENGTH) {
-                    writer.println(
-                        createErrorResponse("", "request too long")
-                    )
-                    return@withContext
-                }
-
-                if (!isAuthorized()) {
-                    writer.println(
-                        createErrorResponse("", "unauthorized")
-                    )
-                    return@withContext
-                }
-
-                val request = parseRequest(line)
-
-                if (request == null) {
-                    writer.println(
-                        createErrorResponse("", "invalid JSON")
-                    )
-                    return@withContext
-                }
-
-                val (requestId, cmd) = request
-
-                when (cmd.lowercase()) {
-                    "status" -> handleStatus(writer, requestId)
-                    "history" -> handleHistory(writer, requestId)
-                    "providers" -> handleProviders(writer, requestId)
-                    "memory" -> handleMemory(writer, requestId)
-                    else -> handleCommand(
-                        writer,
-                        requestId,
-                        cmd
-                    )
-                }
-
-                writer.flush()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                try {
-                    clientSocket.close()
-                } catch (_: Exception) {
-                }
+                clientSocket.close()
+            } catch (_: Exception) {
             }
         }
+    }
 
     private fun handleStatus(
         writer: PrintWriter,
@@ -280,7 +281,7 @@ class SocketServer(
                             """{"requestId":"${escapeJson(requestId)}","status":"done","result":"${escapeJson(state.result)}"}"""
                         )
                         writer.flush()
-                        cancel()
+                        return@collect
                     }
 
                     is AgentState.Error -> {
@@ -288,7 +289,7 @@ class SocketServer(
                             """{"requestId":"${escapeJson(requestId)}","status":"error","result":"${escapeJson(state.message)}"}"""
                         )
                         writer.flush()
-                        cancel()
+                        return@collect
                     }
 
                     is AgentState.Idle -> {
