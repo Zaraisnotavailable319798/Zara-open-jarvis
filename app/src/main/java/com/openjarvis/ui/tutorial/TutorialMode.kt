@@ -68,7 +68,7 @@ class TutorialMode(private val context: Context) {
 
         val step = TutorialStep(
             stepNumber = stepNum,
-            description = action.description ?: action.action,
+            description = action.action,
             targetBounds = bounds,
             narration = narration
         )
