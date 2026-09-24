@@ -21,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 
 class OverlayService : Service() {
 
@@ -49,18 +50,26 @@ class OverlayService : Service() {
         voiceManager = VoiceManager(this)
         graphifyRepo = GraphifyRepository(this)
 
-        socketServer = SocketServer(
-            this,
-            agentCore!!,
-            graphifyRepo!!
-        )
+        val core = agentCore
+        val repository = graphifyRepo
+
+        if (core != null && repository != null) {
+            socketServer = SocketServer(
+                this,
+                core,
+                repository
+            )
+        }
 
         startForeground(
             NOTIFICATION_ID,
             createNotification()
         )
 
-        socketServer?.start()
+        try {
+            socketServer?.start()
+        } catch (_: Exception) {
+        }
 
         serviceJob = serviceScope.launch {
             initializeServices()
@@ -68,7 +77,7 @@ class OverlayService : Service() {
 
         serviceScope.launch(Dispatchers.IO) {
             try {
-                recentTasks = graphifyRepo?.getRecentTasks(10).orEmpty()
+                recentTasks = repository?.getRecentTasks(10).orEmpty()
             } catch (_: Exception) {
                 recentTasks = emptyList()
             }
@@ -78,17 +87,12 @@ class OverlayService : Service() {
     private suspend fun initializeServices() {
         if (isInitialized) return
 
-        isInitialized = true
-
         try {
             graphifyRepo?.getRecentTasks(10)
         } catch (_: Exception) {
         }
 
-        try {
-            voiceManager?.initialize()
-        } catch (_: Exception) {
-        }
+        isInitialized = true
     }
 
     override fun onStartCommand(
