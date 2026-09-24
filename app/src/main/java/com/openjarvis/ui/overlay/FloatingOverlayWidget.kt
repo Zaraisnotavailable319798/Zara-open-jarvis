@@ -1,5 +1,3 @@
-Worked for 15s
-
 package com.openjarvis.ui.overlay
 
 import androidx.compose.animation.AnimatedContent
