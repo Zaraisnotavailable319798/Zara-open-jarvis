@@ -9,63 +9,112 @@ import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
-class VisionModule(private val context: Context) {
+class VisionModule(
+    private val context: Context
+) {
 
-    private val recognizer: TextRecognizer = TextRecognition.getClient(
-        TextRecognizerOptions.DEFAULT_OPTIONS
-    )
+    private val recognizer: TextRecognizer =
+        TextRecognition.getClient(
+            TextRecognizerOptions.DEFAULT_OPTIONS
+        )
 
-    suspend fun extractText(bitmap: Bitmap): String = suspendCancellableCoroutine { continuation ->
-        val image = InputImage.fromBitmap(bitmap, 0)
-        
+    suspend fun extractText(
+        bitmap: Bitmap
+    ): String = suspendCancellableCoroutine { continuation ->
+
+        val image = InputImage.fromBitmap(
+            bitmap,
+            0
+        )
+
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
+
                 val extractedText = visionText.text
-                if (extractedText.isNotBlank()) {
-                    continuation.resume(extractedText)
-                } else {
-                    continuation.resume("")
-                }
+
+                continuation.resume(
+                    extractedText.ifBlank { "" }
+                )
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "OCR failed", e)
+
+                Log.e(
+                    TAG,
+                    "OCR failed",
+                    e
+                )
+
                 continuation.resume("")
             }
     }
 
-    suspend fun extractStructured(bitmap: Bitmap): ScreenOCR = suspendCancellableCoroutine { continuation ->
-        val image = InputImage.fromBitmap(bitmap, 0)
-        
+    suspend fun extractStructured(
+        bitmap: Bitmap
+    ): ScreenOCR = suspendCancellableCoroutine { continuation ->
+
+        val image = InputImage.fromBitmap(
+            bitmap,
+            0
+        )
+
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
+
                 val blocks = visionText.textBlocks.map { block ->
+
                     OCRBlock(
                         text = block.text,
-                        confidence = block.confidence,
-                        boundingBox = block.boundingBox?.let { rect ->
-                            BoundingBox(rect.left, rect.top, rect.right, rect.bottom)
-                        },
+                        confidence = 1.0f,
+                        boundingBox =
+                            block.boundingBox?.let { rect ->
+                                BoundingBox(
+                                    left = rect.left,
+                                    top = rect.top,
+                                    right = rect.right,
+                                    bottom = rect.bottom
+                                )
+                            },
                         lines = block.lines.map { line ->
+
                             OCRLine(
                                 text = line.text,
-                                confidence = line.confidence,
-                                boundingBox = line.boundingBox?.let { rect ->
-                                    BoundingBox(rect.left, rect.top, rect.right, rect.bottom)
-                                }
+                                confidence = 1.0f,
+                                boundingBox =
+                                    line.boundingBox?.let { rect ->
+                                        BoundingBox(
+                                            left = rect.left,
+                                            top = rect.top,
+                                            right = rect.right,
+                                            bottom = rect.bottom
+                                        )
+                                    }
                             )
                         }
                     )
                 }
-                continuation.resume(ScreenOCR(
-                    fullText = visionText.text,
-                    blocks = blocks
-                ))
+
+                continuation.resume(
+                    ScreenOCR(
+                        fullText = visionText.text,
+                        blocks = blocks
+                    )
+                )
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "OCR failed", e)
-                continuation.resume(ScreenOCR("", emptyList()))
+
+                Log.e(
+                    TAG,
+                    "OCR failed",
+                    e
+                )
+
+                continuation.resume(
+                    ScreenOCR(
+                        fullText = "",
+                        blocks = emptyList()
+                    )
+                )
             }
     }
 
@@ -99,14 +148,23 @@ class VisionModule(private val context: Context) {
     )
 
     companion object {
+
         private const val TAG = "VisionModule"
 
         @Volatile
         private var instance: VisionModule? = null
 
-        fun getInstance(context: Context): VisionModule {
+        fun getInstance(
+            context: Context
+        ): VisionModule {
+
             return instance ?: synchronized(this) {
-                instance ?: VisionModule(context.applicationContext).also { instance = it }
+
+                instance ?: VisionModule(
+                    context.applicationContext
+                ).also {
+                    instance = it
+                }
             }
         }
     }
