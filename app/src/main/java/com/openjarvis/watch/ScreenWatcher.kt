@@ -43,9 +43,6 @@ class ScreenWatcher(
     private val rules =
         mutableListOf<WatchRule>()
 
-    private val screenReader =
-        ScreenReader(context)
-
     private val graphifyRepo =
         GraphifyRepository(context)
 
@@ -116,7 +113,7 @@ class ScreenWatcher(
             val now =
                 System.currentTimeMillis()
 
-            for (rule in rules) {
+            for (rule in rules.toList()) {
 
                 if (!rule.enabled) continue
 
@@ -246,8 +243,13 @@ class ScreenWatcher(
 
     private fun getCurrentScreenText(): String {
 
+        val service =
+            JarvisAccessibilityService.instance
+                ?: return ""
+
         return try {
-            screenReader.extractAllText()
+            ScreenReader(service)
+                .extractAllText()
         } catch (_: Exception) {
             ""
         }
