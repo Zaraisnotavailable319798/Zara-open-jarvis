@@ -17,17 +17,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -56,6 +55,7 @@ class MainActivity : ComponentActivity() {
         composeView.setContent {
             MaterialTheme {
                 val context = LocalContext.current
+
                 var recentTasks by remember {
                     mutableStateOf<List<TaskNode>>(emptyList())
                 }
@@ -66,8 +66,6 @@ class MainActivity : ComponentActivity() {
 
                 val accessibilityEnabled = isAccessibilityServiceEnabled()
                 val overlayEnabled = Settings.canDrawOverlays(context)
-
-                agentCore.state.collectAsState()
 
                 if (!accessibilityEnabled || !overlayEnabled) {
                     PermissionScreen(
@@ -148,7 +146,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@androidx.compose.runtime.Composable
+@Composable
 fun PermissionScreen(
     accessibilityEnabled: Boolean,
     overlayEnabled: Boolean,
