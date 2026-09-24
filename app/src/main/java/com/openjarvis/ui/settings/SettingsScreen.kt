@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -204,8 +203,8 @@ fun SettingsScreen(
                         shape = RoundedCornerShape(16.dp),
                         color = SettingsColors.Void900,
                         border = BorderStroke(
-                            1.dp,
-                            SettingsColors.BorderSubtle
+                            width = 1.dp,
+                            color = SettingsColors.BorderSubtle
                         )
                     ) {
                         Row(
@@ -267,8 +266,8 @@ fun SettingsScreen(
                         shape = RoundedCornerShape(16.dp),
                         color = SettingsColors.Void800,
                         border = BorderStroke(
-                            1.dp,
-                            SettingsColors.BorderSubtle
+                            width = 1.dp,
+                            color = SettingsColors.BorderSubtle
                         )
                     ) {
                         Row(
@@ -365,39 +364,36 @@ fun SettingsScreen(
 private fun SettingsHeader(
     onNavigateBack: () -> Unit
 ) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(88.dp)
-                .padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowLeft,
-                    contentDescription = "Back",
-                    tint = SettingsColors.TextSecondary
-                )
-            }
-
-            Text(
-                text = "Settings",
-                style = TextStyle(
-                    fontWeight = FontWeight(600),
-                    fontSize = 20.sp,
-                    color = SettingsColors.TextPrimary
-                )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(88.dp)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onNavigateBack) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowLeft,
+                contentDescription = "Back",
+                tint = SettingsColors.TextSecondary
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(SettingsColors.BorderSubtle)
+        Text(
+            text = "Settings",
+            style = TextStyle(
+                fontWeight = FontWeight(600),
+                fontSize = 20.sp,
+                color = SettingsColors.TextPrimary
+            )
         )
     }
+
+    Divider(
+        modifier = Modifier.fillMaxWidth(),
+        thickness = 1.dp,
+        color = SettingsColors.BorderSubtle
+    )
 }
 
 @Composable
@@ -420,16 +416,11 @@ private fun ProviderSelectorCard(
     onToggle: () -> Unit,
     onSelect: (String) -> Unit
 ) {
-    val borderColor by animateColorAsState(
-        targetValue =
-            if (isExpanded) {
-                SettingsColors.BorderGlow
-            } else {
-                SettingsColors.BorderSubtle
-            },
-        animationSpec = tween(200),
-        label = "border"
-    )
+    val borderColor = if (isExpanded) {
+        SettingsColors.BorderGlow
+    } else {
+        SettingsColors.BorderSubtle
+    }
 
     Surface(
         modifier = Modifier
@@ -438,7 +429,7 @@ private fun ProviderSelectorCard(
             .clickable(onClick = onToggle),
         shape = RoundedCornerShape(16.dp),
         color = SettingsColors.Void900,
-        border = BorderStroke(1.dp, borderColor)
+        border = BorderStroke(width = 1.dp, color = borderColor)
     ) {
         Row(
             modifier = Modifier
@@ -491,8 +482,8 @@ private fun ProviderSelectorCard(
             shape = RoundedCornerShape(12.dp),
             color = SettingsColors.Void800,
             border = BorderStroke(
-                1.dp,
-                SettingsColors.BorderSubtle
+                width = 1.dp,
+                color = SettingsColors.BorderSubtle
             )
         ) {
             Column {
@@ -611,16 +602,11 @@ fun FloatingLabelTextField(
         label = "scale"
     )
 
-    val borderColor by animateColorAsState(
-        targetValue =
-            if (isFocused) {
-                SettingsColors.Violet
-            } else {
-                SettingsColors.BorderSubtle
-            },
-        animationSpec = tween(200),
-        label = "border"
-    )
+    val borderColor = if (isFocused) {
+        SettingsColors.Violet
+    } else {
+        SettingsColors.BorderSubtle
+    }
 
     if (!visible) return
 
@@ -630,7 +616,7 @@ fun FloatingLabelTextField(
             .height(56.dp),
         shape = RoundedCornerShape(14.dp),
         color = SettingsColors.Void900,
-        border = BorderStroke(1.dp, borderColor)
+        border = BorderStroke(width = 1.dp, color = borderColor)
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
@@ -690,16 +676,12 @@ private fun TestConnectionButton(
         mutableStateOf<TestState>(TestState.Idle)
     }
 
-    val borderColor by animateColorAsState(
-        targetValue = when (testState) {
-            is TestState.Idle -> SettingsColors.VioletDim
-            is TestState.Loading -> SettingsColors.Violet
-            is TestState.Success -> SettingsColors.Green
-            is TestState.Error -> SettingsColors.Red
-        },
-        animationSpec = tween(200),
-        label = "btn_border"
-    )
+    val borderColor = when (testState) {
+        is TestState.Idle -> SettingsColors.VioletDim
+        is TestState.Loading -> SettingsColors.Violet
+        is TestState.Success -> SettingsColors.Green
+        is TestState.Error -> SettingsColors.Red
+    }
 
     val textColor = when (testState) {
         is TestState.Idle -> SettingsColors.Violet
@@ -721,7 +703,7 @@ private fun TestConnectionButton(
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, borderColor),
+        border = BorderStroke(width = 1.dp, color = borderColor),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = textColor
         )
@@ -787,8 +769,8 @@ private fun SettingsToggleRow(
         shape = RoundedCornerShape(16.dp),
         color = SettingsColors.Void900,
         border = BorderStroke(
-            1.dp,
-            SettingsColors.BorderSubtle
+            width = 1.dp,
+            color = SettingsColors.BorderSubtle
         )
     ) {
         Row(
@@ -857,8 +839,8 @@ private fun PermissionRow(
         shape = RoundedCornerShape(16.dp),
         color = SettingsColors.Void900,
         border = BorderStroke(
-            1.dp,
-            SettingsColors.BorderSubtle
+            width = 1.dp,
+            color = SettingsColors.BorderSubtle
         )
     ) {
         Row(
@@ -926,8 +908,8 @@ private fun AboutSection() {
         shape = RoundedCornerShape(16.dp),
         color = SettingsColors.Void900,
         border = BorderStroke(
-            1.dp,
-            SettingsColors.BorderSubtle
+            width = 1.dp,
+            color = SettingsColors.BorderSubtle
         )
     ) {
         Column {
@@ -936,11 +918,9 @@ private fun AboutSection() {
                 value = "M1.0 (build 1)"
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(SettingsColors.BorderSubtle)
+            Divider(
+                thickness = 1.dp,
+                color = SettingsColors.BorderSubtle
             )
 
             AboutRow(
@@ -948,11 +928,9 @@ private fun AboutSection() {
                 value = "MIT Open Source"
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(SettingsColors.BorderSubtle)
+            Divider(
+                thickness = 1.dp,
+                color = SettingsColors.BorderSubtle
             )
 
             AboutRow(
@@ -961,11 +939,9 @@ private fun AboutSection() {
                 isLink = true
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(SettingsColors.BorderSubtle)
+            Divider(
+                thickness = 1.dp,
+                color = SettingsColors.BorderSubtle
             )
 
             Text(
@@ -1043,8 +1019,8 @@ private fun SavedToast(
             shape = RoundedCornerShape(999.dp),
             color = SettingsColors.Void800,
             border = BorderStroke(
-                1.dp,
-                SettingsColors.Green.copy(alpha = 0.25f)
+                width = 1.dp,
+                color = SettingsColors.Green.copy(alpha = 0.25f)
             )
         ) {
             Text(
