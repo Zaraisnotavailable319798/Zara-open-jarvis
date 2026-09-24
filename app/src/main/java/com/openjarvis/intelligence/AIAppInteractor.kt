@@ -11,77 +11,48 @@ class AIAppInteractor(private val context: Context) {
     private val workingMemory = TaskWorkingMemory()
 
     fun openAIApp(meta: AIAppMeta): Boolean {
-        return JarvisAccessibilityService.instance
-            ?.openAppByPackage(meta.packageName)
-            ?: false
+        val service = JarvisAccessibilityService.instance
+            ?: return false
+
+        return service.openAppByPackage(meta.packageName)
     }
 
     suspend fun prepareAIApp(meta: AIAppMeta): Boolean {
-
-        val service =
-            JarvisAccessibilityService.instance
-                ?: return false
+        val service = JarvisAccessibilityService.instance
+            ?: return false
 
         if (!service.openAppByPackage(meta.packageName)) {
             return false
         }
 
-        // Give the target app time to render.
         delay(1800)
 
-        // First try the known input hint.
         if (meta.inputFieldHint.isNotBlank()) {
-
-            if (
-                service.focusInputByText(
-                    meta.inputFieldHint
-                )
-            ) {
+            if (service.focusInputByText(meta.inputFieldHint)) {
                 return true
             }
         }
 
-        // Fallback: find the first editable input.
         return service.focusFirstInput()
     }
 
     fun clearContext(): Boolean {
+        val service = JarvisAccessibilityService.instance
+            ?: return false
 
-        val service =
-            JarvisAccessibilityService.instance
-                ?: return false
-
-        /*
-         * Do NOT press Back here.
-         *
-         * Pressing Back can close the keyboard,
-         * navigate away from the chat, or leave the app.
-         *
-         * Context is handled by starting the prompt from
-         * the current conversation and letting the AI app
-         * manage its own conversation state.
-         */
         return service.focusFirstInput()
     }
 
-    suspend fun typePrompt(
-        prompt: String
-    ): Boolean {
+    suspend fun typePrompt(prompt: String): Boolean {
+        val service = JarvisAccessibilityService.instance
+            ?: return false
 
-        val service =
-            JarvisAccessibilityService.instance
-                ?: return false
-
-        // First try the currently focused input.
         if (service.typeText(prompt)) {
             return true
         }
 
-        // Fallback: locate an editable input.
         if (service.focusFirstInput()) {
-
             delay(200)
-
             return service.typeText(prompt)
         }
 
@@ -92,16 +63,10 @@ class AIAppInteractor(private val context: Context) {
         meta: AIAppMeta,
         prompt: String
     ): Boolean {
+        val service = JarvisAccessibilityService.instance
+            ?: return false
 
-        val service =
-            JarvisAccessibilityService.instance
-                ?: return false
-
-        /*
-         * First use the known input hint.
-         */
         if (meta.inputFieldHint.isNotBlank()) {
-
             if (
                 service.typeTextIntoInput(
                     meta.inputFieldHint,
@@ -112,50 +77,25 @@ class AIAppInteractor(private val context: Context) {
             }
         }
 
-        /*
-         * Fallback to focused/first input.
-         */
         return typePrompt(prompt)
     }
 
-    suspend fun sendPrompt(
-        meta: AIAppMeta
-    ): Boolean {
+    suspend fun sendPrompt(meta: AIAppMeta): Boolean {
+        val service = JarvisAccessibilityService.instance
+            ?: return false
 
-        val service =
-            JarvisAccessibilityService.instance
-                ?: return false
+        val preferredLabel = meta.sendButtonText
 
-        /*
-         * Use the app-specific send label first.
-         */
-        val preferredLabel =
-            meta.sendButtonText
-
-        if (
-            !preferredLabel.isNullOrBlank()
-        ) {
-
-            if (
-                service.tapByText(
-                    preferredLabel
-                )
-            ) {
+        if (!preferredLabel.isNullOrBlank()) {
+            if (service.tapByText(preferredLabel)) {
                 return true
             }
 
-            if (
-                service.tapByContentDescription(
-                    preferredLabel
-                )
-            ) {
+            if (service.tapByContentDescription(preferredLabel)) {
                 return true
             }
         }
 
-        /*
-         * Generic fallback labels.
-         */
         val sendLabels = listOf(
             "Send",
             "Submit",
@@ -163,24 +103,15 @@ class AIAppInteractor(private val context: Context) {
         )
 
         for (label in sendLabels) {
-
-            if (
-                service.tapByText(label)
-            ) {
+            if (service.tapByText(label)) {
                 return true
             }
 
-            if (
-                service.tapByContentDescription(label)
-            ) {
+            if (service.tapByContentDescription(label)) {
                 return true
             }
         }
 
-        /*
-         * Final fallback:
-         * Android IME Enter.
-         */
         return service.pressEnter()
     }
 
@@ -190,36 +121,21 @@ class AIAppInteractor(private val context: Context) {
         timeoutMs: Long = 60_000
     ): String {
 
-        if (
-            !prepareAIApp(meta)
-        ) {
+        if (!prepareAIApp(meta)) {
             return ""
         }
 
-        /*
-         * Capture the screen BEFORE sending.
-         * This prevents the old screen from being
-         * mistaken for the new response.
-         */
-        val previousScreen =
-            screenReader.extractAllText()
+        val previousScreen = screenReader.extractAllText()
 
         delay(300)
 
-        if (
-            !typePrompt(
-                meta,
-                prompt
-            )
-        ) {
+        if (!typePrompt(meta, prompt)) {
             return ""
         }
 
         delay(300)
 
-        if (
-            !sendPrompt(meta)
-        ) {
+        if (!sendPrompt(meta)) {
             return ""
         }
 
@@ -234,83 +150,46 @@ class AIAppInteractor(private val context: Context) {
         previousText: String = ""
     ): String {
 
-        val startTime =
-            System.currentTimeMillis()
-
-        var lastText =
-            previousText
-
-        var stableCount =
-            0
+        val startTime = System.currentTimeMillis()
+        var lastText = previousText
+        var stableCount = 0
 
         while (
-            System.currentTimeMillis() -
-                startTime <
-            timeoutMs
+            System.currentTimeMillis() - startTime < timeoutMs
         ) {
-
             delay(1000)
 
-            val currentText =
-                screenReader.extractAllText()
+            val currentText = screenReader.extractAllText()
 
             if (currentText.isBlank()) {
                 continue
             }
 
-            /*
-             * If the screen has changed,
-             * something happened after the prompt.
-             */
-            if (
-                currentText != previousText
-            ) {
-
-                if (
-                    currentText == lastText
-                ) {
+            if (currentText != previousText) {
+                if (currentText == lastText) {
                     stableCount++
                 } else {
                     stableCount = 0
                     lastText = currentText
                 }
 
-                /*
-                 * Two consecutive identical screen
-                 * reads = likely finished response.
-                 */
-                if (
-                    stableCount >= 2
-                ) {
+                if (stableCount >= 2) {
                     return currentText
                 }
-
             } else {
-
                 stableCount = 0
             }
         }
 
-        /*
-         * Return the latest changed screen content.
-         */
-        return if (
-            lastText != previousText
-        ) {
+        return if (lastText != previousText) {
             lastText
         } else {
             ""
         }
     }
 
-    fun extractResponse(
-        meta: AIAppMeta
-    ): String {
-
-        return when (
-            meta.responseExtraction
-        ) {
-
+    fun extractResponse(meta: AIAppMeta): String {
+        return when (meta.responseExtraction) {
             ResponseExtraction.SCREEN_TEXT ->
                 screenReader.extractAllText()
 
