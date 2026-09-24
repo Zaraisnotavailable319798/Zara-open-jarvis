@@ -34,7 +34,15 @@ class AgentCore(private val context: Context) {
     private val graphifyRepo = GraphifyRepository(context)
     private val analysisEngine = AnalysisEngine(context)
     private val universalAdapter = UniversalAdapter(context)
-    private val screenReader = ScreenReader(context)
+
+    private fun readScreenText(): String {
+        val service =
+            JarvisAccessibilityService.instance
+                ?: return ""
+
+        return ScreenReader(service).extractAllText()
+    }
+
     private val visionModule = VisionModule.getInstance(context)
     private val taskRouter = TaskRouter(context)
     private val appAnalyzer = AppAnalyzer(context)
@@ -182,7 +190,7 @@ RULES:
 
                     val screenText =
                         withContext(Dispatchers.IO) {
-                            screenReader.extractAllText()
+                            readScreenText()
                         }
 
                     _state.value =
@@ -819,7 +827,7 @@ RULES:
 
             val screen =
                 withContext(Dispatchers.IO) {
-                    screenReader.extractAllText()
+                    readScreenText()
                 }
 
             if (
@@ -840,7 +848,7 @@ RULES:
     private suspend fun executeScreenshot(): Boolean {
 
         return withContext(Dispatchers.IO) {
-            screenReader.extractAllText()
+            readScreenText()
             true
         }
     }
@@ -849,7 +857,7 @@ RULES:
 
         val text =
             withContext(Dispatchers.IO) {
-                screenReader.extractAllText()
+                readScreenText()
             }
 
         workingMemory.set(
@@ -926,7 +934,7 @@ RULES:
 
         val text =
             withContext(Dispatchers.IO) {
-                screenReader.extractAllText()
+                readScreenText()
             }
 
         workingMemory.set(
