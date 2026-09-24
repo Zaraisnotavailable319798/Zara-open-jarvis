@@ -2,6 +2,7 @@ package com.openjarvis.automation
 
 import android.content.Context
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
@@ -143,6 +144,8 @@ class AutomationManager(private val context: Context) {
         automation: Automation
     ) {
 
+        val workManager = WorkManager.getInstance(context)
+
         val constraints = Constraints.Builder()
             .setRequiresBatteryNotLow(false)
             .build()
@@ -152,49 +155,63 @@ class AutomationManager(private val context: Context) {
             "automation_command" to automation.command
         )
 
-        val request = when (val schedule = automation.schedule) {
+        when (val schedule = automation.schedule) {
 
             is AutomationSchedule.Daily -> {
 
-                PeriodicWorkRequestBuilder<AutomationWorker>(
-                    24,
-                    TimeUnit.HOURS,
-                    15,
-                    TimeUnit.MINUTES
-                )
-                    .setConstraints(constraints)
-                    .setInputData(inputData)
-                    .setInitialDelay(
-                        calculateDelay(
-                            schedule.hour,
-                            schedule.minute
-                        ),
-                        TimeUnit.MILLISECONDS
+                val request =
+                    PeriodicWorkRequestBuilder<AutomationWorker>(
+                        24,
+                        TimeUnit.HOURS,
+                        15,
+                        TimeUnit.MINUTES
                     )
-                    .addTag(automation.id)
-                    .build()
+                        .setConstraints(constraints)
+                        .setInputData(inputData)
+                        .setInitialDelay(
+                            calculateDelay(
+                                schedule.hour,
+                                schedule.minute
+                            ),
+                            TimeUnit.MILLISECONDS
+                        )
+                        .addTag(automation.id)
+                        .build()
+
+                workManager.enqueueUniquePeriodicWork(
+                    automation.id,
+                    ExistingPeriodicWorkPolicy.REPLACE,
+                    request
+                )
             }
 
             is AutomationSchedule.Weekly -> {
 
-                PeriodicWorkRequestBuilder<AutomationWorker>(
-                    7,
-                    TimeUnit.DAYS,
-                    15,
-                    TimeUnit.MINUTES
-                )
-                    .setConstraints(constraints)
-                    .setInputData(inputData)
-                    .setInitialDelay(
-                        calculateWeeklyDelay(
-                            schedule.dayOfWeek,
-                            schedule.hour,
-                            schedule.minute
-                        ),
-                        TimeUnit.MILLISECONDS
+                val request =
+                    PeriodicWorkRequestBuilder<AutomationWorker>(
+                        7,
+                        TimeUnit.DAYS,
+                        15,
+                        TimeUnit.MINUTES
                     )
-                    .addTag(automation.id)
-                    .build()
+                        .setConstraints(constraints)
+                        .setInputData(inputData)
+                        .setInitialDelay(
+                            calculateWeeklyDelay(
+                                schedule.dayOfWeek,
+                                schedule.hour,
+                                schedule.minute
+                            ),
+                            TimeUnit.MILLISECONDS
+                        )
+                        .addTag(automation.id)
+                        .build()
+
+                workManager.enqueueUniquePeriodicWork(
+                    automation.id,
+                    ExistingPeriodicWorkPolicy.REPLACE,
+                    request
+                )
             }
 
             is AutomationSchedule.Interval -> {
@@ -204,16 +221,23 @@ class AutomationManager(private val context: Context) {
                     TimeUnit.MINUTES.toMillis(15)
                 )
 
-                PeriodicWorkRequestBuilder<AutomationWorker>(
-                    interval,
-                    TimeUnit.MILLISECONDS,
-                    15,
-                    TimeUnit.MINUTES
+                val request =
+                    PeriodicWorkRequestBuilder<AutomationWorker>(
+                        interval,
+                        TimeUnit.MILLISECONDS,
+                        15,
+                        TimeUnit.MINUTES
+                    )
+                        .setConstraints(constraints)
+                        .setInputData(inputData)
+                        .addTag(automation.id)
+                        .build()
+
+                workManager.enqueueUniquePeriodicWork(
+                    automation.id,
+                    ExistingPeriodicWorkPolicy.REPLACE,
+                    request
                 )
-                    .setConstraints(constraints)
-                    .setInputData(inputData)
-                    .addTag(automation.id)
-                    .build()
             }
 
             is AutomationSchedule.Once -> {
@@ -225,24 +249,24 @@ class AutomationManager(private val context: Context) {
                     return
                 }
 
-                OneTimeWorkRequestBuilder<AutomationWorker>()
-                    .setConstraints(constraints)
-                    .setInputData(inputData)
-                    .setInitialDelay(
-                        delay,
-                        TimeUnit.MILLISECONDS
-                    )
-                    .addTag(automation.id)
-                    .build()
+                val request =
+                    OneTimeWorkRequestBuilder<AutomationWorker>()
+                        .setConstraints(constraints)
+                        .setInputData(inputData)
+                        .setInitialDelay(
+                            delay,
+                            TimeUnit.MILLISECONDS
+                        )
+                        .addTag(automation.id)
+                        .build()
+
+                workManager.enqueueUniqueWork(
+                    automation.id,
+                    ExistingWorkPolicy.REPLACE,
+                    request
+                )
             }
         }
-
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork(
-                automation.id,
-                ExistingWorkPolicy.REPLACE,
-                request
-            )
     }
 
     // ---------------------------------------------------------
